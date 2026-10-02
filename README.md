@@ -18,7 +18,7 @@ Cloudflare Workers Builds from this GitHub repo.
 ### Create the D1 database
 
 Create it in the Cloudflare dashboard (**Storage & Databases → D1 → Create**) and name it
-`round-trip`. If you'd rather use a terminal, run `npx wrangler d1 create round-trip`.
+`round-trip-db`. If you'd rather use a terminal, run `npx wrangler d1 create round-trip-db`.
 
 Its ID is set as `database_id` in [`wrangler.jsonc`](wrangler.jsonc). If you ever recreate
 the database, update that value and commit it.

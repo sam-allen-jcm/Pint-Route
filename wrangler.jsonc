@@ -16,8 +16,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "round-trip",
-      // ID of the D1 database "round-trip" (Cloudflare dashboard → Storage & Databases → D1).
+      "database_name": "round-trip-db",
+      // ID of the D1 database "round-trip-db" (Cloudflare dashboard → Storage & Databases → D1).
       "database_id": "dea026b2-5a81-439a-ae35-1878b3284263",
       "migrations_dir": "migrations"
     }
