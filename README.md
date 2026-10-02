@@ -20,14 +20,8 @@ Cloudflare Workers Builds from this GitHub repo.
 Create it in the Cloudflare dashboard (**Storage & Databases → D1 → Create**) and name it
 `round-trip`. If you'd rather use a terminal, run `npx wrangler d1 create round-trip`.
 
-Copy the database's **ID** and paste it into [`wrangler.jsonc`](wrangler.jsonc), replacing
-the placeholder:
-
-```jsonc
-"database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID",
-```
-
-Commit that change. Deploys will fail until the real ID is in place.
+Its ID is set as `database_id` in [`wrangler.jsonc`](wrangler.jsonc). If you ever recreate
+the database, update that value and commit it.
 
 ### Google Cloud keys
 

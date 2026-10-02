@@ -17,13 +17,8 @@
     {
       "binding": "DB",
       "database_name": "round-trip",
-      // ┌──────────────────────────────────────────────────────────────────┐
-      // │ PLACEHOLDER: replace with the ID of your D1 database.            │
-      // │ Create it with:  npx wrangler d1 create round-trip              │
-      // │ (or Cloudflare dashboard → Storage & Databases → D1) and paste   │
-      // │ the "database_id" it prints here.                                │
-      // └──────────────────────────────────────────────────────────────────┘
-      "database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID",
+      // ID of the D1 database "round-trip" (Cloudflare dashboard → Storage & Databases → D1).
+      "database_id": "dea026b2-5a81-439a-ae35-1878b3284263",
       "migrations_dir": "migrations"
     }
   ]
