@@ -1,6 +1,6 @@
 // The creator's private edit tokens live only in this browser (no accounts yet).
 
-const KEY = "round-trip:crawls";
+const KEY = "pint-route:crawls";
 
 export interface SavedCrawl {
   slug: string;

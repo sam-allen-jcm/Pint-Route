@@ -30,7 +30,7 @@ export function HomePage() {
       <header className="hero">
         <div className="sign">
           <span className="sign-est">Est. tonight</span>
-          <h1>Round Trip</h1>
+          <h1>Pint Route</h1>
           <span className="sign-sub">Pub crawls, properly planned</span>
         </div>
       </header>

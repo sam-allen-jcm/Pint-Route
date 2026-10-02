@@ -24,7 +24,7 @@ export function ShareSheet({ name, slug, editToken, onClose }: Props) {
   async function shareView() {
     if (navigator.share) {
       try {
-        await navigator.share({ title: `${name} · Round Trip`, text: `Join the crawl: ${name}`, url: viewUrl });
+        await navigator.share({ title: `${name} · Pint Route`, text: `Join the crawl: ${name}`, url: viewUrl });
         return;
       } catch (err) {
         if ((err as Error).name === "AbortError") return;

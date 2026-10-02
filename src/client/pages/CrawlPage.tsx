@@ -277,7 +277,7 @@ export function CrawlPage() {
   return (
     <div className="crawl-page">
       <header className="topbar">
-        <Link to="/" className="brand" aria-label="Round Trip home">
+        <Link to="/" className="brand" aria-label="Pint Route home">
           🍺
         </Link>
         <div className="topbar-title">

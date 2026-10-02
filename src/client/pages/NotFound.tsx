@@ -10,7 +10,7 @@ export function NotFound({ message = "We couldn't find that page." }: { message?
         <h1>Last orders</h1>
         <p>{message}</p>
         <Link className="btn btn-primary" to="/">
-          Back to Round Trip
+          Back to Pint Route
         </Link>
       </div>
     </main>

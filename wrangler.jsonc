@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "round-trip",
+  "name": "pint-route",
   "main": "src/worker/index.ts",
   "compatibility_date": "2026-09-01",
   "observability": { "enabled": true },

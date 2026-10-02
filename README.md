@@ -1,4 +1,4 @@
-# Round Trip 🍺
+# Pint Route 🍺
 
 A mobile-first pub crawl planner. Search for pubs, build a crawl, see the walking
 route between stops, tick pubs off as you go, and share a read-only link with your mates.
@@ -30,7 +30,7 @@ You need **two separate API keys**:
 | Key | Used by | Enable these APIs | Restrict it by |
 | --- | --- | --- | --- |
 | Server key → `GOOGLE_PLACES_API_KEY` | Worker only | **Places API (New)**, **Routes API** | API restrictions (those two APIs). There's no referrer, because calls come from Cloudflare. |
-| Browser key → `VITE_GOOGLE_MAPS_KEY` | Browser map | **Maps JavaScript API** | **HTTP referrer**, e.g. `https://round-trip.<your-subdomain>.workers.dev/*` and your custom domain |
+| Browser key → `VITE_GOOGLE_MAPS_KEY` | Browser map | **Maps JavaScript API** | **HTTP referrer**, e.g. `https://pint-route.<your-subdomain>.workers.dev/*` and your custom domain |
 
 > The walking route uses the **Routes API** (`computeRoutes`, `WALK`) from the Worker,
 > because the legacy Directions API can't be enabled on new Google Cloud projects.
@@ -52,10 +52,10 @@ exists, go to **Worker → Settings → Build**. Then set:
 | Deploy command | `npx wrangler d1 migrations apply DB --remote && npx wrangler deploy` |
 | Root directory | `/` (repo root) |
 
-The Worker name must be **`round-trip`**, which matches `name` in `wrangler.jsonc`.
+The Worker name must be **`pint-route`**, which matches `name` in `wrangler.jsonc`.
 
 `npm run build` runs `vite build`, which outputs the client assets (`dist/client`) and the
-Worker (`dist/round_trip`). It also writes a redirect config (`.wrangler/deploy/config.json`)
+Worker (`dist/pint_route`). It also writes a redirect config (`.wrangler/deploy/config.json`)
 that `wrangler d1 migrations apply` and `wrangler deploy` both pick up automatically.
 
 ### Secrets and variables

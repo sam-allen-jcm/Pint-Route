@@ -1,4 +1,4 @@
--- Round Trip schema.
+-- Pint Route schema.
 -- Per Google Maps Platform terms we store ONLY Place IDs plus our own data
 -- (crawl names, stop order, visits, notes). Names, hours, status and photos are
 -- always fetched live from Places API via the Worker.

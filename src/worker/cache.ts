@@ -13,7 +13,7 @@ export async function cached<T>(key: string, ttlSeconds: number, load: () => Pro
   const hit = memory.get(key);
   if (hit && hit.expires > now) return hit.value as T;
 
-  const cacheKey = new Request(`https://round-trip.internal/cache/${encodeURIComponent(key)}`);
+  const cacheKey = new Request(`https://pint-route.internal/cache/${encodeURIComponent(key)}`);
   const cache = typeof caches !== "undefined" ? (caches as unknown as { default: Cache }).default : undefined;
   if (cache) {
     try {
