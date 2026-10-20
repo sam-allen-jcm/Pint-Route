@@ -84,8 +84,8 @@ export function SearchPanel({ addedPlaceIds, stopCount, onAdd }: Props) {
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search pubs, e.g. The Crown, Islington"
-          aria-label="Search pubs"
+          placeholder="Pubs, bars, taprooms, breweries…"
+          aria-label="Search pubs, bars, taprooms and breweries"
           enterKeyHint="search"
         />
         <button className="btn btn-primary" disabled={!query.trim() || loading !== null}>
@@ -93,7 +93,7 @@ export function SearchPanel({ addedPlaceIds, stopCount, onAdd }: Props) {
         </button>
       </form>
       <button type="button" className="btn btn-ghost btn-block" onClick={nearMe} disabled={loading !== null}>
-        📍 {loading === "near" ? "Finding pubs near you…" : query.trim() ? `"${query.trim()}" near me` : "Pubs near me"}
+        📍 {loading === "near" ? "Finding pubs near you…" : query.trim() ? `"${query.trim()}" near me` : "Pubs, bars & breweries near me"}
       </button>
       {near && <p className="muted small">Results are biased towards your current location.</p>}
       {error && <p className="error">{error}</p>}
@@ -102,7 +102,7 @@ export function SearchPanel({ addedPlaceIds, stopCount, onAdd }: Props) {
       {results && (
         <>
           {results.length === 0 ? (
-            <p className="muted">No open pubs found. Try another search.</p>
+            <p className="muted">Nothing open found. Try another search.</p>
           ) : (
             <ul className="results">
               {results.map((p) => {

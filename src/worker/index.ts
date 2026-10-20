@@ -68,8 +68,12 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     }
   }
   if ((m = path.match(new RegExp(`^/api/crawls/${SLUG}/route$`))) && method === "GET") {
-    const stops = await getStopsForRoute(env, m[1]);
-    return json(await walkingRoute(env, stops), { headers: { "Cache-Control": "private, max-age=60" } });
+    const param = url.searchParams.get("stops");
+    const order = param === null ? null : param.split(",").filter(Boolean).map(Number);
+    if (order && (order.length > MAX_STOPS || !order.every(Number.isInteger))) throw new HttpError(400, "Invalid stops");
+    // No browser caching: the route changes whenever stops change (the Worker
+    // still caches Google's answer per place sequence).
+    return json(await walkingRoute(env, await getStopsForRoute(env, m[1], order)));
   }
   if ((m = path.match(new RegExp(`^/api/crawls/${SLUG}/stops$`))) && method === "POST") {
     return json(await addStop(request, env, m[1], await readJson(request)), { status: 201 });

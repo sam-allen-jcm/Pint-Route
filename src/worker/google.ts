@@ -14,9 +14,30 @@ const SEARCH_TTL = 300;
 const ROUTE_TTL = 600;
 const PHOTO_TTL = 1800;
 
+// Google place types that count as somewhere to drink. There is no "taproom"
+// type: taprooms are listed as brewery, brewpub or bar.
+const DRINK_TYPES = [
+  "pub",
+  "bar",
+  "brewery",
+  "brewpub",
+  "beer_garden",
+  "gastropub",
+  "irish_pub",
+  "sports_bar",
+  "cocktail_bar",
+  "wine_bar",
+  "bar_and_grill",
+  "lounge_bar",
+];
+const DRINK_TYPE_SET = new Set(DRINK_TYPES);
+// Types requested by "near me" (a pub-crawl focused subset of DRINK_TYPES).
+const NEARBY_TYPES = ["pub", "bar", "brewery", "brewpub", "beer_garden", "gastropub", "irish_pub"];
+
 // Search: Pro SKU fields only.
 const SEARCH_FIELDS = [
   "places.id",
+  "places.types",
   "places.displayName",
   "places.shortFormattedAddress",
   "places.formattedAddress",
@@ -56,6 +77,7 @@ interface GPlace {
   location?: { latitude: number; longitude: number };
   businessStatus?: BusinessStatus;
   primaryTypeDisplayName?: { text: string };
+  types?: string[];
   googleMapsUri?: string;
   utcOffsetMinutes?: number;
   currentOpeningHours?: { openNow?: boolean; weekdayDescriptions?: string[] };
@@ -115,11 +137,10 @@ export function searchPlaces(env: Env, query: string, near: LatLng | null): Prom
   return cached(`search:${q.toLowerCase()}:${nearKey}`, SEARCH_TTL, async () => {
     let data: { places?: GPlace[] };
     if (q) {
+      // No type bias here: biasing towards "bar" pushes breweries and taprooms
+      // out of the results. Instead, drinking spots are filtered below.
       data = await google(env, `${PLACES}/places:searchText`, SEARCH_FIELDS, {
         textQuery: q,
-        // A preference, not a hard filter, so "The Crown Islington" still finds a gastropub.
-        includedType: "bar",
-        strictTypeFiltering: false,
         pageSize: 20,
         ...(near
           ? { locationBias: { circle: { center: { latitude: near.lat, longitude: near.lng }, radius: 5000 } } }
@@ -127,7 +148,8 @@ export function searchPlaces(env: Env, query: string, near: LatLng | null): Prom
       });
     } else if (near) {
       data = await google(env, `${PLACES}/places:searchNearby`, SEARCH_FIELDS, {
-        includedTypes: ["pub", "bar"],
+        // Primary type, so hotels or cinemas that merely contain a bar are left out.
+        includedPrimaryTypes: NEARBY_TYPES,
         maxResultCount: 20,
         rankPreference: "DISTANCE",
         locationRestriction: {
@@ -137,7 +159,11 @@ export function searchPlaces(env: Env, query: string, near: LatLng | null): Prom
     } else {
       throw new HttpError(400, "Provide a search term or a location");
     }
-    return (data.places ?? []).map(toSummary);
+    const places = data.places ?? [];
+    // Keep only drinking spots; if none match (an unusually typed venue searched
+    // by name), fall back to everything Google returned.
+    const drinks = places.filter((p) => p.types?.some((t) => DRINK_TYPE_SET.has(t)));
+    return (drinks.length ? drinks : places).map(toSummary);
   });
 }
 

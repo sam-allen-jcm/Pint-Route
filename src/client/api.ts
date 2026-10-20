@@ -51,8 +51,8 @@ export const api = {
   deleteCrawl(slug: string, editToken: string) {
     return request<{ ok: true }>(`/api/crawls/${slug}`, { method: "DELETE", editToken });
   },
-  getRoute(slug: string) {
-    return request<CrawlRoute>(`/api/crawls/${slug}/route`);
+  getRoute(slug: string, stopIds: number[]) {
+    return request<CrawlRoute>(`/api/crawls/${slug}/route?stops=${stopIds.join(",")}`);
   },
   addStop(slug: string, placeId: string, editToken: string) {
     return request<Stop>(`/api/crawls/${slug}/stops`, { method: "POST", body: JSON.stringify({ placeId }), editToken });

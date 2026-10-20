@@ -92,10 +92,11 @@ export function CrawlPage() {
     };
   }, [placeIds, places]);
 
-  // ---- Walking route, refreshed when the order changes ----
-  const routeKey = placeIds.join(">");
+  // ---- Walking route, refetched whenever the stops on screen change ----
+  const routeKey = crawl?.stops.map((s) => s.id).join(",") ?? "";
   useEffect(() => {
-    if (placeIds.length < 2) {
+    const stopIds = routeKey ? routeKey.split(",").map(Number) : [];
+    if (stopIds.length < 2) {
       setRoute(null);
       setRouteError(null);
       return;
@@ -103,14 +104,14 @@ export function CrawlPage() {
     let cancelled = false;
     const timer = setTimeout(() => {
       api
-        .getRoute(slug)
+        .getRoute(slug, stopIds)
         .then((r) => {
           if (cancelled) return;
           setRoute(r);
           setRouteError(null);
         })
         .catch((err: Error) => !cancelled && setRouteError(err.message));
-    }, 400);
+    }, 300);
     return () => {
       cancelled = true;
       clearTimeout(timer);
@@ -210,11 +211,22 @@ export function CrawlPage() {
     }
   }
 
+  // Only trust legs that join two stops that are still next to each other, so a
+  // delete or reorder never leaves a stale line on the map while the new route loads.
+  const legByPair = new Map(route?.legs.map((leg) => [`${leg.fromStopId}>${leg.toStopId}`, leg]) ?? []);
   function legAfter(i: number) {
-    if (!route || i >= stops.length - 1) return null;
-    const leg = route.legs[i];
-    return leg && leg.fromStopId === stops[i].id && leg.toStopId === stops[i + 1].id ? leg : null;
+    if (i >= stops.length - 1) return null;
+    return legByPair.get(`${stops[i].id}>${stops[i + 1].id}`) ?? null;
   }
+  const currentLegs = stops.slice(0, -1).flatMap((_, i) => legAfter(i) ?? []);
+  const routeFresh = stops.length >= 2 && currentLegs.length === stops.length - 1;
+  const shownRoute: CrawlRoute | null = route
+    ? {
+        legs: currentLegs,
+        distanceMeters: currentLegs.reduce((n, l) => n + l.distanceMeters, 0),
+        durationSeconds: currentLegs.reduce((n, l) => n + l.durationSeconds, 0),
+      }
+    : null;
 
   const stopsPanel = (
     <section className="stack">
@@ -272,7 +284,15 @@ export function CrawlPage() {
     </section>
   );
 
-  const map = <CrawlMap stops={stops} places={places} route={route} routeError={routeError} />;
+  const map = (
+    <CrawlMap
+      stops={stops}
+      places={places}
+      route={shownRoute}
+      routeUpdating={stops.length >= 2 && !routeFresh && !routeError}
+      routeError={routeError}
+    />
+  );
 
   return (
     <div className="crawl-page">
@@ -309,7 +329,7 @@ export function CrawlPage() {
           <div className="topbar-sub">
             {stops.length} {stops.length === 1 ? "stop" : "stops"}
             {stops.length > 0 && ` · ${visitedCount} visited`}
-            {route && route.legs.length > 0 && ` · ${formatDuration(route.durationSeconds)} walk`}
+            {routeFresh && shownRoute && ` · ${formatDuration(shownRoute.durationSeconds)} walk`}
           </div>
         </div>
         <button className="btn btn-small btn-share" onClick={() => setSharing(true)}>

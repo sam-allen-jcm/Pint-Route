@@ -115,9 +115,20 @@ export async function getCrawl(request: Request, env: Env, slug: string): Promis
   };
 }
 
-export async function getStopsForRoute(env: Env, slug: string): Promise<Stop[]> {
+/**
+ * Stops to route through. With `order` (stop ids, as the client currently shows
+ * them) the route follows exactly that sequence, so it can't lag behind a
+ * delete or reorder that is still being saved. Ids must belong to this crawl.
+ */
+export async function getStopsForRoute(env: Env, slug: string, order: number[] | null): Promise<Stop[]> {
   const crawl = await loadCrawl(env, slug);
-  return listStops(env, crawl.id);
+  const stops = await listStops(env, crawl.id);
+  if (!order) return stops;
+  const byId = new Map(stops.map((s) => [s.id, s]));
+  if (new Set(order).size !== order.length || !order.every((id) => byId.has(id))) {
+    throw new HttpError(409, "Stop list is out of date, please refresh");
+  }
+  return order.map((id) => byId.get(id)!);
 }
 
 export async function renameCrawl(request: Request, env: Env, slug: string, body: { name?: unknown }) {

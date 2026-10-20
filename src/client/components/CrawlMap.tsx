@@ -13,6 +13,8 @@ interface Props {
   stops: Stop[];
   places: Record<string, PlaceDetails>;
   route: CrawlRoute | null;
+  /** True while the route for the current stop order is still loading. */
+  routeUpdating: boolean;
   routeError: string | null;
 }
 
@@ -33,7 +35,7 @@ export function CrawlMap(props: Props) {
   );
 }
 
-function CrawlMapInner({ stops, places, route, routeError }: Props) {
+function CrawlMapInner({ stops, places, route, routeUpdating, routeError }: Props) {
   const [openStop, setOpenStop] = useState<number | null>(null);
   const located = stops.filter((s) => places[s.placeId]?.location);
   const open = located.find((s) => s.id === openStop);
@@ -85,10 +87,12 @@ function CrawlMapInner({ stops, places, route, routeError }: Props) {
         <RouteLines route={route} />
         <FitBounds points={located.map((s) => places[s.placeId].location!)} />
       </Map>
-      {(route || routeError) && (
+      {(routeError || routeUpdating || (route && route.legs.length > 0)) && (
         <div className="map-summary">
           {routeError ? (
             <span>{routeError}</span>
+          ) : routeUpdating ? (
+            <span>🚶 Updating walking route…</span>
           ) : route && route.legs.length > 0 ? (
             <span>
               🚶 <strong>{formatDuration(route.durationSeconds)}</strong> walking ·{" "}
@@ -103,15 +107,18 @@ function CrawlMapInner({ stops, places, route, routeError }: Props) {
 
 function RouteLines({ route }: { route: CrawlRoute | null }) {
   const map = useMap();
+  // Redraw only when the set of leg polylines actually changes.
+  const key = route?.legs.map((leg) => leg.polyline ?? "").join("\n") ?? "";
   useEffect(() => {
-    if (!map || !route) return;
-    const lines = route.legs
-      .filter((leg) => leg.polyline)
+    if (!map || !key) return;
+    const lines = key
+      .split("\n")
+      .filter(Boolean)
       .map(
-        (leg) =>
+        (polyline) =>
           new google.maps.Polyline({
             map,
-            path: decodePolyline(leg.polyline!),
+            path: decodePolyline(polyline),
             strokeColor: ROUTE_COLOUR,
             strokeOpacity: 0,
             icons: [
@@ -124,7 +131,7 @@ function RouteLines({ route }: { route: CrawlRoute | null }) {
           }),
       );
     return () => lines.forEach((l) => l.setMap(null));
-  }, [map, route]);
+  }, [map, key]);
   return null;
 }
 

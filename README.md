@@ -131,14 +131,14 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 
 | Method & path | Auth | Purpose |
 | --- | --- | --- |
-| `GET /api/places/search?q=&lat=&lng=` | – | Text Search (`q`, location-biased if `lat`/`lng` given) or Nearby Search (`lat`/`lng` only, types `pub`, `bar`) |
+| `GET /api/places/search?q=&lat=&lng=` | – | Text Search (`q`, location-biased if `lat`/`lng` given; results filtered to drinking spots) or Nearby Search (`lat`/`lng` only: pubs, bars, breweries/taprooms, brewpubs, beer gardens, gastropubs, Irish pubs) |
 | `GET /api/places?ids=a,b,c` | – | Live details for stops |
 | `GET /api/places/photo?name=&w=` | – | Redirect to a place photo |
 | `POST /api/crawls` | – | Create crawl → `{ slug, editToken }` |
 | `GET /api/crawls/:slug` | optional | Crawl + stops (`canEdit` reflects the token) |
 | `PATCH /api/crawls/:slug` | edit | Rename `{ name }` |
 | `DELETE /api/crawls/:slug` | edit | Delete crawl |
-| `GET /api/crawls/:slug/route` | – | Walking route: per-leg time, distance and polyline |
+| `GET /api/crawls/:slug/route?stops=1,2,3` | – | Walking route through the given stop ids in that order (defaults to the saved order): per-leg time, distance and polyline |
 | `POST /api/crawls/:slug/stops` | edit | Add a stop `{ placeId }` |
 | `PUT /api/crawls/:slug/stops/order` | edit | Reorder `{ stopIds: [...] }` |
 | `PATCH /api/crawls/:slug/stops/:id` | edit | `{ visitedOn: "YYYY-MM-DD" \| null, note }` |
