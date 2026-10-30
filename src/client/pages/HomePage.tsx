@@ -1,14 +1,56 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import type { CrawlSummary } from "../../shared/types";
 import { api } from "../api";
+import { useAuth } from "../auth";
 import { savedCrawls } from "../storage";
+
+interface ListItem {
+  slug: string;
+  name: string;
+  detail: string | null;
+  deviceOnly: boolean;
+}
+
+function summaryDetail(c: CrawlSummary): string {
+  if (c.stopCount === 0) return "No stops yet";
+  const stops = `${c.stopCount} ${c.stopCount === 1 ? "stop" : "stops"}`;
+  return c.visitedCount ? `${stops} · ${c.visitedCount} visited` : stops;
+}
 
 export function HomePage() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const mine = savedCrawls.list();
+  const [accountCrawls, setAccountCrawls] = useState<CrawlSummary[] | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      setAccountCrawls(null);
+      return;
+    }
+    let cancelled = false;
+    api
+      .myCrawls()
+      .then((list) => !cancelled && setAccountCrawls(list))
+      .catch(() => !cancelled && setAccountCrawls([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  // Account crawls first, then any still only saved on this device.
+  const inAccount = new Set(accountCrawls?.map((c) => c.slug));
+  const items: ListItem[] = [
+    ...(accountCrawls ?? []).map((c) => ({ slug: c.slug, name: c.name, detail: summaryDetail(c), deviceOnly: false })),
+    ...savedCrawls
+      .list()
+      .filter((c) => !inAccount.has(c.slug))
+      .map((c) => ({ slug: c.slug, name: c.name, detail: null, deviceOnly: Boolean(user) })),
+  ];
+  const loadingList = Boolean(user) && accountCrawls === null;
 
   async function create(e: FormEvent) {
     e.preventDefault();
@@ -27,6 +69,30 @@ export function HomePage() {
 
   return (
     <main className="page narrow">
+      <nav className="account-bar" aria-label="Account">
+        {user === undefined ? (
+          <span />
+        ) : user ? (
+          <>
+            <span className="account-name">
+              Hi, <strong>{user.name}</strong>
+            </span>
+            <button className="text-btn" onClick={() => logout()}>
+              Log out
+            </button>
+          </>
+        ) : (
+          <>
+            <Link to="/login" className="text-btn">
+              Log in
+            </Link>
+            <Link to="/register" className="btn btn-small btn-ghost">
+              Sign up
+            </Link>
+          </>
+        )}
+      </nav>
+
       <header className="hero">
         <div className="sign">
           <span className="sign-est">Est. tonight</span>
@@ -58,17 +124,28 @@ export function HomePage() {
 
       <section className="stack">
         <h2 className="section-title">Your crawls</h2>
-        {mine.length === 0 ? (
+        {loadingList ? (
+          <p className="muted">Loading your crawls…</p>
+        ) : items.length === 0 ? (
           <p className="muted">
-            Crawls you create on this device appear here. Anyone you share a link with can view it, but only this
-            browser can edit it.
+            {user
+              ? "No crawls yet. Start one above."
+              : "Crawls you create on this device appear here. Anyone you share a link with can view it, but only this browser can edit it."}
           </p>
         ) : (
           <ul className="crawl-list">
-            {mine.map((c) => (
+            {items.map((c) => (
               <li key={c.slug}>
                 <Link to={`/c/${c.slug}`} className="crawl-link">
-                  <span className="crawl-link-name">{c.name}</span>
+                  <span className="crawl-link-text">
+                    <span className="crawl-link-name">{c.name}</span>
+                    {(c.detail || c.deviceOnly) && (
+                      <span className="crawl-link-detail">
+                        {c.detail}
+                        {c.deviceOnly && "On this device only"}
+                      </span>
+                    )}
+                  </span>
                   <span className="chev" aria-hidden>
                     ›
                   </span>
@@ -76,6 +153,11 @@ export function HomePage() {
               </li>
             ))}
           </ul>
+        )}
+        {user === null && items.length > 0 && (
+          <p className="muted small">
+            <Link to="/register">Create an account</Link> to keep these crawls if you lose or change your phone.
+          </p>
         )}
       </section>
     </main>

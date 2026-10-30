@@ -1,6 +1,9 @@
 import { MAX_STOPS, type LatLng } from "../shared/types";
+import { login, logout, me, register, requireUser } from "./auth";
 import {
   addStop,
+  claimCrawls,
+  listMyCrawls,
   createCrawl,
   deleteCrawl,
   getCrawl,
@@ -51,9 +54,23 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     return json({ places }, { headers: { "Cache-Control": "private, max-age=120" } });
   }
 
+  // ---- Accounts ----
+  if (path === "/api/auth/register" && method === "POST") return register(request, env, await readJson(request));
+  if (path === "/api/auth/login" && method === "POST") return login(request, env, await readJson(request));
+  if (path === "/api/auth/logout" && method === "POST") return logout(request, env);
+  if (path === "/api/auth/me" && method === "GET") return me(request, env);
+  if (path === "/api/me/crawls" && method === "GET") {
+    const user = await requireUser(request, env);
+    return json({ crawls: await listMyCrawls(env, user.id) });
+  }
+  if (path === "/api/me/claim" && method === "POST") {
+    const user = await requireUser(request, env);
+    return json({ claimed: await claimCrawls(env, user.id, await readJson(request)) });
+  }
+
   // ---- Crawls (D1) ----
   if (path === "/api/crawls" && method === "POST") {
-    return json(await createCrawl(env, await readJson(request)), { status: 201 });
+    return json(await createCrawl(request, env, await readJson(request)), { status: 201 });
   }
   if ((m = path.match(new RegExp(`^/api/crawls/${SLUG}$`)))) {
     const slug = m[1];

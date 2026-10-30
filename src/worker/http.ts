@@ -14,10 +14,13 @@ export function json(data: unknown, init: ResponseInit = {}): Response {
   return new Response(JSON.stringify(data), { ...init, headers });
 }
 
-export async function readJson<T>(request: Request): Promise<T> {
+export async function readJson<T = Record<string, unknown>>(request: Request): Promise<T> {
+  let body: unknown;
   try {
-    return (await request.json()) as T;
+    body = await request.json();
   } catch {
     throw new HttpError(400, "Request body must be JSON");
   }
+  if (!body || typeof body !== "object" || Array.isArray(body)) throw new HttpError(400, "Request body must be a JSON object");
+  return body as T;
 }

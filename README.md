@@ -115,7 +115,28 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 - Stops already on a crawl that later close are **flagged** with a red "Permanently closed" or
   "Temporarily closed" badge, and their map pin turns grey.
 
-### Sharing & editing (no accounts)
+### Accounts (optional)
+
+- People can register and log in with **email + password**, but don't have to: guests can
+  still create and share crawls exactly as before.
+- Passwords are hashed with **PBKDF2-SHA256** (random 16-byte salt, 100,000 iterations, the
+  maximum Workers' WebCrypto allows). The iteration count is stored with each hash so it can
+  be raised later.
+- Logging in sets a random session token in an **HttpOnly, Secure, SameSite=Lax** cookie
+  (`pr_session`, 30 days). D1 stores only its SHA-256, so a database leak doesn't expose live
+  sessions. Logging out deletes the session.
+- Login and registration are **rate-limited** with Workers Rate Limiting bindings: 10 attempts
+  a minute per email address, and 60 a minute per IP (looser, because many phones share an IP
+  on mobile networks and pub Wi-Fi). Failed logins don't reveal whether an email has an account.
+- A crawl created while logged in belongs to that account. On login or sign-up, crawls created
+  on that device as a guest are moved into the account, using the edit tokens stored there.
+  Owners can edit their crawls from any device they're logged in on. Logging out removes this
+  device's edit tokens for the account's crawls, so the next person on a shared phone can't
+  edit them.
+- **Not built yet:** password reset (needs an email-sending service), changing email or
+  password, and deleting an account.
+
+### Sharing & editing
 
 - Creating a crawl returns a random public **slug** (`/c/<slug>`) and a random private
   **edit token**. The database stores only a SHA-256 hash of the token.
@@ -129,13 +150,21 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 
 ### API
 
+"edit" means a valid `X-Edit-Token` header **or** a session cookie for the crawl's owner.
+
 | Method & path | Auth | Purpose |
 | --- | --- | --- |
 | `GET /api/places/search?q=&lat=&lng=` | – | Text Search (`q`, location-biased if `lat`/`lng` given; results filtered to drinking spots) or Nearby Search (`lat`/`lng` only: pubs, bars, breweries/taprooms, brewpubs, beer gardens, gastropubs, Irish pubs) |
 | `GET /api/places?ids=a,b,c` | – | Live details for stops |
 | `GET /api/places/photo?name=&w=` | – | Redirect to a place photo |
-| `POST /api/crawls` | – | Create crawl → `{ slug, editToken }` |
-| `GET /api/crawls/:slug` | optional | Crawl + stops (`canEdit` reflects the token) |
+| `POST /api/auth/register` | – | `{ name, email, password }` → creates account, sets session cookie |
+| `POST /api/auth/login` | – | `{ email, password }` → sets session cookie |
+| `POST /api/auth/logout` | session | Ends the session |
+| `GET /api/auth/me` | – | `{ user }` (or `null`) |
+| `GET /api/me/crawls` | session | The user's crawls, newest first |
+| `POST /api/me/claim` | session | `{ crawls: [{ slug, editToken }] }` → moves guest crawls into the account |
+| `POST /api/crawls` | – | Create crawl → `{ slug, editToken }` (owned by the user if logged in) |
+| `GET /api/crawls/:slug` | optional | Crawl + stops (`canEdit` from the token or ownership, `isOwner`) |
 | `PATCH /api/crawls/:slug` | edit | Rename `{ name }` |
 | `DELETE /api/crawls/:slug` | edit | Delete crawl |
 | `GET /api/crawls/:slug/route?stops=1,2,3` | – | Walking route through the given stop ids in that order (defaults to the saved order): per-leg time, distance and polyline |
@@ -148,10 +177,10 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 
 ```
 migrations/            D1 SQL migrations
-src/worker/            Worker API (index.ts router, crawls.ts D1, google.ts Places/Routes, cache.ts)
-src/client/            React app (pages/, components/, styles.css)
+src/worker/            Worker API (index.ts router, auth.ts accounts, crawls.ts D1, google.ts Places/Routes, cache.ts)
+src/client/            React app (pages/, components/, auth.tsx, styles.css)
 src/shared/types.ts    Types shared by the Worker and the client
-wrangler.jsonc         Worker name, D1 binding, assets config
+wrangler.jsonc         Worker name, D1 binding, rate limiters, assets config
 vite.config.ts         React + Cloudflare Vite plugins
 ```
 

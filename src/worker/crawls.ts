@@ -1,6 +1,8 @@
-import { MAX_STOPS, type Crawl, type CreatedCrawl, type Stop } from "../shared/types";
+import { MAX_STOPS, type Crawl, type CrawlSummary, type CreatedCrawl, type Stop } from "../shared/types";
 import type { Env } from "./env";
 import { getPlace, isPlaceId } from "./google";
+import { getUser } from "./auth";
+import { randomToken, sha256 } from "./crypto";
 import { HttpError } from "./http";
 
 interface CrawlRow {
@@ -8,6 +10,7 @@ interface CrawlRow {
   slug: string;
   name: string;
   edit_token_hash: string;
+  owner_id: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -28,16 +31,6 @@ function randomSlug(length = 10): string {
   return Array.from(bytes, (b) => SLUG_ALPHABET[b % SLUG_ALPHABET.length]).join("");
 }
 
-function randomToken(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
-  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-async function sha256(text: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
-}
-
 function cleanName(name: unknown): string {
   if (typeof name !== "string") throw new HttpError(400, "Name is required");
   const trimmed = name.trim().replace(/\s+/g, " ");
@@ -52,15 +45,25 @@ async function loadCrawl(env: Env, slug: string): Promise<CrawlRow> {
   return row;
 }
 
-async function hasEditAccess(request: Request, crawl: CrawlRow): Promise<boolean> {
+async function tokenMatches(request: Request, crawl: CrawlRow): Promise<boolean> {
   const token = request.headers.get("X-Edit-Token");
-  if (!token) return false;
-  return (await sha256(token)) === crawl.edit_token_hash;
+  return Boolean(token) && (await sha256(token!)) === crawl.edit_token_hash;
+}
+
+async function isOwner(request: Request, env: Env, crawl: CrawlRow): Promise<boolean> {
+  if (crawl.owner_id === null) return false;
+  const user = await getUser(request, env);
+  return user?.id === crawl.owner_id;
+}
+
+/** Edit rights come from the private edit token, or from owning the crawl. */
+async function hasEditAccess(request: Request, env: Env, crawl: CrawlRow): Promise<boolean> {
+  return (await tokenMatches(request, crawl)) || (await isOwner(request, env, crawl));
 }
 
 async function requireEdit(request: Request, env: Env, slug: string): Promise<CrawlRow> {
   const crawl = await loadCrawl(env, slug);
-  if (!(await hasEditAccess(request, crawl))) throw new HttpError(403, "This link is read-only");
+  if (!(await hasEditAccess(request, env, crawl))) throw new HttpError(403, "This link is read-only");
   return crawl;
 }
 
@@ -85,15 +88,16 @@ function touch(env: Env, crawlId: number) {
   );
 }
 
-export async function createCrawl(env: Env, body: { name?: unknown }): Promise<CreatedCrawl> {
+export async function createCrawl(request: Request, env: Env, body: { name?: unknown }): Promise<CreatedCrawl> {
   const name = cleanName(body.name);
+  const user = await getUser(request, env);
   const editToken = randomToken();
   const hash = await sha256(editToken);
   for (let attempt = 0; attempt < 5; attempt++) {
     const slug = randomSlug();
     try {
-      await env.DB.prepare("INSERT INTO crawls (slug, name, edit_token_hash) VALUES (?, ?, ?)")
-        .bind(slug, name, hash)
+      await env.DB.prepare("INSERT INTO crawls (slug, name, edit_token_hash, owner_id) VALUES (?, ?, ?, ?)")
+        .bind(slug, name, hash, user?.id ?? null)
         .run();
       return { slug, editToken };
     } catch (err) {
@@ -111,8 +115,52 @@ export async function getCrawl(request: Request, env: Env, slug: string): Promis
     createdAt: crawl.created_at,
     updatedAt: crawl.updated_at,
     stops: await listStops(env, crawl.id),
-    canEdit: await hasEditAccess(request, crawl),
+    canEdit: await hasEditAccess(request, env, crawl),
+    isOwner: await isOwner(request, env, crawl),
+    hasValidToken: await tokenMatches(request, crawl),
   };
+}
+
+/** The logged-in user's crawls, most recently changed first. */
+export async function listMyCrawls(env: Env, userId: number): Promise<CrawlSummary[]> {
+  const { results } = await env.DB.prepare(
+    `SELECT c.slug, c.name, c.updated_at,
+            COUNT(s.id) AS stop_count, COUNT(s.visited_on) AS visited_count
+     FROM crawls c LEFT JOIN stops s ON s.crawl_id = c.id
+     WHERE c.owner_id = ?
+     GROUP BY c.id
+     ORDER BY c.updated_at DESC
+     LIMIT 200`,
+  )
+    .bind(userId)
+    .all<{ slug: string; name: string; updated_at: string; stop_count: number; visited_count: number }>();
+  return results.map((r) => ({
+    slug: r.slug,
+    name: r.name,
+    stopCount: r.stop_count,
+    visitedCount: r.visited_count,
+    updatedAt: r.updated_at,
+  }));
+}
+
+/**
+ * Moves crawls created on this device (proved by their edit tokens) into the
+ * user's account. Crawls that already have an owner are left alone.
+ */
+export async function claimCrawls(env: Env, userId: number, body: { crawls?: unknown }): Promise<number> {
+  const items = Array.isArray(body.crawls) ? body.crawls.slice(0, 100) : [];
+  let claimed = 0;
+  for (const item of items) {
+    const { slug, editToken } = (item ?? {}) as { slug?: unknown; editToken?: unknown };
+    if (typeof slug !== "string" || typeof editToken !== "string" || editToken.length > 100) continue;
+    const res = await env.DB.prepare(
+      "UPDATE crawls SET owner_id = ? WHERE slug = ? AND edit_token_hash = ? AND owner_id IS NULL",
+    )
+      .bind(userId, slug, await sha256(editToken))
+      .run();
+    claimed += res.meta.changes ?? 0;
+  }
+  return claimed;
 }
 
 /**

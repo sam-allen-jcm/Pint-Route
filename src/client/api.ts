@@ -1,4 +1,14 @@
-import type { Crawl, CrawlRoute, CreatedCrawl, LatLng, PlaceDetails, PlaceSummary, Stop } from "../shared/types";
+import type {
+  Crawl,
+  CrawlRoute,
+  CrawlSummary,
+  CreatedCrawl,
+  LatLng,
+  PlaceDetails,
+  PlaceSummary,
+  Stop,
+  User,
+} from "../shared/types";
 
 export class ApiError extends Error {
   constructor(
@@ -21,6 +31,32 @@ async function request<T>(path: string, init: RequestInit & { editToken?: string
 }
 
 export const api = {
+  // ---- accounts (session cookie, sent automatically) ----
+  me() {
+    return request<{ user: User | null }>("/api/auth/me").then((r) => r.user);
+  },
+  register(name: string, email: string, password: string) {
+    return request<{ user: User }>("/api/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ name, email, password }),
+    }).then((r) => r.user);
+  },
+  login(email: string, password: string) {
+    return request<{ user: User }>("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }).then((r) => r.user);
+  },
+  logout() {
+    return request<{ ok: true }>("/api/auth/logout", { method: "POST" });
+  },
+  myCrawls() {
+    return request<{ crawls: CrawlSummary[] }>("/api/me/crawls").then((r) => r.crawls);
+  },
+  claimCrawls(crawls: { slug: string; editToken: string }[]) {
+    return request<{ claimed: number }>("/api/me/claim", { method: "POST", body: JSON.stringify({ crawls }) });
+  },
+
   searchPlaces(q: string, near: LatLng | null) {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
@@ -45,33 +81,33 @@ export const api = {
   getCrawl(slug: string, editToken: string | null) {
     return request<Crawl>(`/api/crawls/${slug}`, { editToken });
   },
-  renameCrawl(slug: string, name: string, editToken: string) {
+  renameCrawl(slug: string, name: string, editToken: string | null) {
     return request<Crawl>(`/api/crawls/${slug}`, { method: "PATCH", body: JSON.stringify({ name }), editToken });
   },
-  deleteCrawl(slug: string, editToken: string) {
+  deleteCrawl(slug: string, editToken: string | null) {
     return request<{ ok: true }>(`/api/crawls/${slug}`, { method: "DELETE", editToken });
   },
   getRoute(slug: string, stopIds: number[]) {
     return request<CrawlRoute>(`/api/crawls/${slug}/route?stops=${stopIds.join(",")}`);
   },
-  addStop(slug: string, placeId: string, editToken: string) {
+  addStop(slug: string, placeId: string, editToken: string | null) {
     return request<Stop>(`/api/crawls/${slug}/stops`, { method: "POST", body: JSON.stringify({ placeId }), editToken });
   },
-  reorderStops(slug: string, stopIds: number[], editToken: string) {
+  reorderStops(slug: string, stopIds: number[], editToken: string | null) {
     return request<Crawl>(`/api/crawls/${slug}/stops/order`, {
       method: "PUT",
       body: JSON.stringify({ stopIds }),
       editToken,
     });
   },
-  updateStop(slug: string, stopId: number, patch: { visitedOn?: string | null; note?: string | null }, editToken: string) {
+  updateStop(slug: string, stopId: number, patch: { visitedOn?: string | null; note?: string | null }, editToken: string | null) {
     return request<Stop>(`/api/crawls/${slug}/stops/${stopId}`, {
       method: "PATCH",
       body: JSON.stringify(patch),
       editToken,
     });
   },
-  removeStop(slug: string, stopId: number, editToken: string) {
+  removeStop(slug: string, stopId: number, editToken: string | null) {
     return request<{ ok: true }>(`/api/crawls/${slug}/stops/${stopId}`, { method: "DELETE", editToken });
   },
 };

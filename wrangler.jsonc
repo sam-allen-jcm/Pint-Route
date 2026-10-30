@@ -21,6 +21,22 @@
       "database_id": "dea026b2-5a81-439a-ae35-1878b3284263",
       "migrations_dir": "migrations"
     }
+  ],
+
+  // Slows down password guessing on login/register: 10 attempts a minute per
+  // email address, and a looser 60 a minute per IP (many phones share one IP on
+  // mobile networks and pub Wi-Fi). namespace_id is any number unique in your account.
+  "ratelimits": [
+    {
+      "name": "AUTH_EMAIL_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 10, "period": 60 }
+    },
+    {
+      "name": "AUTH_IP_LIMITER",
+      "namespace_id": "1002",
+      "simple": { "limit": 60, "period": 60 }
+    }
   ]
 
   // Secrets (not stored in this file):

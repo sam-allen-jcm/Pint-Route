@@ -45,14 +45,33 @@ export interface Stop {
   note: string | null;
 }
 
+export interface User {
+  id: number;
+  email: string;
+  name: string;
+}
+
+/** A crawl in the logged-in user's account list. */
+export interface CrawlSummary {
+  slug: string;
+  name: string;
+  stopCount: number;
+  visitedCount: number;
+  updatedAt: string;
+}
+
 export interface Crawl {
   slug: string;
   name: string;
   createdAt: string;
   updatedAt: string;
   stops: Stop[];
-  /** True when the request carried a valid edit token. */
+  /** True when the request carried a valid edit token or comes from the owner. */
   canEdit: boolean;
+  /** True when the crawl belongs to the logged-in user. */
+  isOwner: boolean;
+  /** True when the request's X-Edit-Token is this crawl's edit token. */
+  hasValidToken: boolean;
 }
 
 export interface CreatedCrawl {

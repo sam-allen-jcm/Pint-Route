@@ -857,3 +857,68 @@ textarea:focus {
 .field input {
   font-weight: 400;
 }
+
+/* ---------- accounts ---------- */
+
+.account-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 40px;
+}
+.account-bar .text-btn {
+  text-decoration: none;
+}
+.account-name {
+  margin-right: auto;
+  color: var(--muted);
+}
+.account-name strong {
+  color: var(--ink);
+}
+
+.auth-header {
+  padding: 8px 0 4px;
+}
+.auth-brand {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 1.3rem;
+  color: var(--ink);
+  text-decoration: none;
+}
+.auth-title {
+  font-size: 1.6rem;
+}
+.auth-lead {
+  margin: 6px 0 16px;
+}
+.password-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.password-row input {
+  flex: 1;
+}
+.hint {
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.center-text {
+  text-align: center;
+}
+
+.crawl-link-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.crawl-link-detail {
+  font-size: 0.82rem;
+  font-weight: 400;
+  color: var(--muted);
+}

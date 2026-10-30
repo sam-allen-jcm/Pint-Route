@@ -6,6 +6,7 @@ import { CrawlMap } from "../components/CrawlMap";
 import { SearchPanel } from "../components/SearchPanel";
 import { ShareSheet } from "../components/ShareSheet";
 import { StopCard } from "../components/StopCard";
+import { useAuth } from "../auth";
 import { formatDistance, formatDuration } from "../format";
 import { savedCrawls } from "../storage";
 import { useMediaQuery } from "../useMediaQuery";
@@ -33,6 +34,8 @@ export function CrawlPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const wide = useMediaQuery("(min-width: 960px)");
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
 
   const [editToken, setEditToken] = useState<string | null>(() => savedCrawls.token(slug));
   const [crawl, setCrawl] = useState<Crawl | null>(null);
@@ -47,7 +50,8 @@ export function CrawlPage() {
 
   const requestedTab = (params.get("tab") as Tab) || "stops";
   const tab: Tab = wide && requestedTab === "map" ? "stops" : requestedTab;
-  const canEdit = Boolean(crawl?.canEdit && editToken);
+  // Edit rights come from this device's edit token or from owning the crawl.
+  const canEdit = Boolean(crawl?.canEdit);
 
   const setTab = (t: Tab) => setParams(t === "stops" ? {} : { tab: t }, { replace: true });
 
@@ -60,10 +64,10 @@ export function CrawlPage() {
       const data = await api.getCrawl(slug, token);
       if (seq !== loadSeq.current) return; // a newer load superseded this one
       hashTokens.delete(slug);
-      if (data.canEdit && token) {
+      if (token && data.hasValidToken) {
         savedCrawls.save(slug, data.name, token);
         setEditToken(token);
-      } else if (token && !data.canEdit) {
+      } else {
         setEditToken(null);
       }
       setCrawl(data);
@@ -71,7 +75,8 @@ export function CrawlPage() {
     } catch (err) {
       if (seq === loadSeq.current) setLoadError(err as Error);
     }
-  }, [slug]);
+    // Reload when the user logs in or out: ownership changes edit rights.
+  }, [slug, userId]);
 
   useEffect(() => {
     load();
@@ -141,8 +146,7 @@ export function CrawlPage() {
   const visitedCount = stops.filter((s) => s.visitedOn).length;
 
   // ---- Edit actions ----
-  async function act<T>(fn: (token: string) => Promise<T>): Promise<T | undefined> {
-    if (!editToken) return;
+  async function act<T>(fn: (token: string | null) => Promise<T>): Promise<T | undefined> {
     setActionError(null);
     try {
       return await fn(editToken);
@@ -157,7 +161,6 @@ export function CrawlPage() {
   }
 
   async function addPlace(place: PlaceSummary) {
-    if (!editToken) return;
     const stop = await api.addStop(slug, place.id, editToken);
     setCrawl((c) => (c ? { ...c, stops: [...c.stops, stop] } : c));
   }
@@ -185,7 +188,6 @@ export function CrawlPage() {
   }
 
   async function updateStop(stop: Stop, patch: { visitedOn?: string | null; note?: string | null }) {
-    if (!editToken) return;
     const updated = await api.updateStop(slug, stop.id, patch, editToken);
     setCrawl((c) => (c ? { ...c, stops: c.stops.map((s) => (s.id === updated.id ? updated : s)) } : c));
   }
@@ -346,6 +348,12 @@ export function CrawlPage() {
       {!canEdit && (
         <div className="banner">
           👀 You're viewing a shared crawl (read-only). <Link to="/">Plan your own</Link>
+          {user === null && (
+            <>
+              {" "}
+              or <Link to={`/login?next=${encodeURIComponent(`/c/${slug}`)}`}>log in</Link> if it's yours.
+            </>
+          )}
         </div>
       )}
       {actionError && (
