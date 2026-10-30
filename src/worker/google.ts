@@ -8,6 +8,7 @@ import type {
   CitySuggestion,
   CrawlRoute,
   LatLng,
+  MeetingPoint,
   PlaceDetails,
   PlaceSummary,
 } from "../shared/types";
@@ -404,6 +405,82 @@ export function getArea(
       viewport: p.viewport ? { low: ll(p.viewport.low), high: ll(p.viewport.high) } : null,
       isCountry: Boolean(p.types?.includes("country")),
       countryCode: p.addressComponents?.find((c) => c.types.includes("country"))?.shortText ?? null,
+    };
+  });
+}
+
+// ---------- meeting point (any kind of place) ----------
+
+const MEET_FIELDS = "id,displayName,shortFormattedAddress,formattedAddress,location,googleMapsUri";
+
+/** Place suggestions of any type (a market, station, address…) for the meeting point. */
+export function suggestPlaces(
+  env: Env,
+  input: string,
+  countryCode: string | null,
+  bias: Bounds | null,
+  sessionToken: string | null,
+): Promise<CitySuggestion[]> {
+  const q = input.trim();
+  if (q.length < 2) return Promise.resolve([]);
+  const country = countryCode && countryName(countryCode) ? countryCode : null;
+  const biasKey = bias ? [bias.low.lat, bias.low.lng, bias.high.lat, bias.high.lng].map((v) => v.toFixed(2)).join(",") : "";
+  return cached(`anyplace:${country ?? ""}:${biasKey}:${q.toLowerCase()}`, SEARCH_TTL, async () => {
+    const data = await google<{
+      suggestions?: {
+        placePrediction?: {
+          placeId: string;
+          structuredFormat?: { mainText?: { text: string }; secondaryText?: { text: string } };
+          text?: { text: string };
+        };
+      }[];
+    }>(
+      env,
+      `${PLACES}/places:autocomplete`,
+      "suggestions.placePrediction.placeId,suggestions.placePrediction.structuredFormat,suggestions.placePrediction.text",
+      {
+        input: q,
+        languageCode: "en",
+        ...(country ? { includedRegionCodes: [country.toLowerCase()] } : {}),
+        ...(bias
+          ? {
+              locationBias: {
+                rectangle: {
+                  low: { latitude: bias.low.lat, longitude: bias.low.lng },
+                  high: { latitude: bias.high.lat, longitude: bias.high.lng },
+                },
+              },
+            }
+          : {}),
+        ...(sessionToken ? { sessionToken } : {}),
+      },
+    );
+    return (data.suggestions ?? []).flatMap((s) => {
+      const p = s.placePrediction;
+      if (!p) return [];
+      return [
+        {
+          placeId: p.placeId,
+          name: p.structuredFormat?.mainText?.text ?? p.text?.text ?? "",
+          detail: p.structuredFormat?.secondaryText?.text ?? null,
+        },
+      ];
+    });
+  });
+}
+
+/** Name, address and location of a meeting point (fetched live, cached briefly). */
+export function getMeetingPoint(env: Env, placeId: string, sessionToken: string | null = null): Promise<MeetingPoint> {
+  if (!isPlaceId(placeId)) throw new HttpError(400, "Invalid place id");
+  return cached(`meet:${placeId}`, DETAILS_TTL, async () => {
+    const qs = sessionToken ? `?sessionToken=${encodeURIComponent(sessionToken)}&languageCode=en` : "?languageCode=en";
+    const p = await google<GPlace>(env, `${PLACES}/places/${encodeURIComponent(placeId)}${qs}`, MEET_FIELDS);
+    return {
+      placeId: p.id,
+      name: p.displayName?.text ?? p.formattedAddress ?? "Meeting point",
+      address: p.shortFormattedAddress ?? p.formattedAddress ?? "",
+      location: p.location ? { lat: p.location.latitude, lng: p.location.longitude } : null,
+      googleMapsUri: p.googleMapsUri ?? null,
     };
   });
 }

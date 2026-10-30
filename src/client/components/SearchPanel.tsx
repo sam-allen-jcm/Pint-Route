@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { distanceMeters } from "../../shared/geo";
-import type { Area, LatLng, PlaceDetails, PlaceSummary } from "../../shared/types";
+import type { Area, LatLng, PlaceSummary } from "../../shared/types";
 import { MAX_STOPS } from "../../shared/types";
 import { api } from "../api";
 import { formatDistance } from "../format";
@@ -8,8 +8,8 @@ import { formatDistance } from "../format";
 interface Props {
   /** The crawl's town/country; text searches prefer results there. */
   area: Area | null;
-  /** The crawl's last stop: results are measured, sorted and biased from there. */
-  from: PlaceDetails | null;
+  /** The crawl's last stop (or its meeting point): results are measured, sorted and biased from there. */
+  from: { name: string; location: LatLng | null; kind: "last stop" | "meeting point" } | null;
   addedPlaceIds: Set<string>;
   stopCount: number;
   onAdd: (place: PlaceSummary) => Promise<void>;
@@ -123,7 +123,9 @@ export function SearchPanel({ area, from, addedPlaceIds, stopCount, onAdd }: Pro
         📍 {loading === "near" ? "Finding pubs near you…" : query.trim() ? `"${query.trim()}" near me` : "Pubs, bars & breweries near me"}
       </button>
       {from?.location ? (
-        <p className="muted small">Closest to {from.name} (your last stop) first.</p>
+        <p className="muted small">
+          Closest to {from.name} (your {from.kind}) first.
+        </p>
       ) : near ? (
         <p className="muted small">Results are biased towards your current location.</p>
       ) : (

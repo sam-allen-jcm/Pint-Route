@@ -17,6 +17,42 @@ interface Props {
 
 /** Optional town/city field with suggestions from Google, limited to one country. */
 export function CityPicker({ countryCode, value, onChange, sessionToken }: Props) {
+  return (
+    <PlaceAutocomplete
+      value={value}
+      onChange={onChange}
+      resetKey={countryCode}
+      placeholder="Start typing, e.g. Leeds"
+      noMatches="No matching towns. You can leave this blank."
+      clearLabel="Clear town or city"
+      fetchSuggestions={(q) => api.suggestCities(q, countryCode, sessionToken)}
+    />
+  );
+}
+
+interface AutocompleteProps {
+  value: PickedCity | null;
+  onChange: (place: PickedCity | null) => void;
+  /** When this changes (e.g. the country), the field clears. */
+  resetKey?: string;
+  placeholder: string;
+  noMatches: string;
+  clearLabel: string;
+  fetchSuggestions: (q: string) => Promise<CitySuggestion[]>;
+  autoFocus?: boolean;
+}
+
+/** Text field with Google place suggestions in a dropdown. */
+export function PlaceAutocomplete({
+  value,
+  onChange,
+  resetKey = "",
+  placeholder,
+  noMatches,
+  clearLabel,
+  fetchSuggestions,
+  autoFocus,
+}: AutocompleteProps) {
   const listId = useId();
   const [text, setText] = useState(value?.label ?? "");
   const [suggestions, setSuggestions] = useState<CitySuggestion[]>([]);
@@ -24,16 +60,19 @@ export function CityPicker({ countryCode, value, onChange, sessionToken }: Props
   const [active, setActive] = useState(-1);
   const [loading, setLoading] = useState(false);
   const blurTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // Latest fetcher without re-running the effect on every render.
+  const fetchRef = useRef(fetchSuggestions);
+  fetchRef.current = fetchSuggestions;
 
-  // Changing country clears the town (but not on first render, so a preset town stays).
-  const lastCountry = useRef(countryCode);
+  // Changing the reset key (e.g. country) clears the field, but not on first render.
+  const lastKey = useRef(resetKey);
   useEffect(() => {
-    if (lastCountry.current === countryCode) return;
-    lastCountry.current = countryCode;
+    if (lastKey.current === resetKey) return;
+    lastKey.current = resetKey;
     setText("");
     setSuggestions([]);
     onChange(null);
-  }, [countryCode]);
+  }, [resetKey]);
 
   // Debounced suggestions while typing (not after a pick).
   useEffect(() => {
@@ -45,8 +84,8 @@ export function CityPicker({ countryCode, value, onChange, sessionToken }: Props
     let cancelled = false;
     const timer = setTimeout(() => {
       setLoading(true);
-      api
-        .suggestCities(q, countryCode, sessionToken)
+      fetchRef
+        .current(q)
         .then((list) => {
           if (cancelled) return;
           setSuggestions(list);
@@ -60,7 +99,7 @@ export function CityPicker({ countryCode, value, onChange, sessionToken }: Props
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [text, value, countryCode, sessionToken]);
+  }, [text, value, resetKey]);
 
   function pick(s: CitySuggestion) {
     const label = s.detail ? `${s.name}, ${s.detail}` : s.name;
@@ -100,7 +139,8 @@ export function CityPicker({ countryCode, value, onChange, sessionToken }: Props
           onKeyDown={onKeyDown}
           onFocus={() => suggestions.length && setOpen(true)}
           onBlur={() => (blurTimer.current = setTimeout(() => setOpen(false), 150))}
-          placeholder="Start typing, e.g. Leeds"
+          placeholder={placeholder}
+          autoFocus={autoFocus}
           autoComplete="off"
           role="combobox"
           aria-expanded={showList}
@@ -112,7 +152,7 @@ export function CityPicker({ countryCode, value, onChange, sessionToken }: Props
           <button
             type="button"
             className="clear-btn"
-            aria-label="Clear town or city"
+            aria-label={clearLabel}
             onClick={() => {
               setText("");
               onChange(null);
@@ -124,7 +164,7 @@ export function CityPicker({ countryCode, value, onChange, sessionToken }: Props
       </div>
       {loading && !showList && text.trim().length >= 2 && !value && <span className="hint">Searching…</span>}
       {!loading && open && !value && text.trim().length >= 2 && suggestions.length === 0 && (
-        <span className="hint">No matching towns. You can leave this blank.</span>
+        <span className="hint">{noMatches}</span>
       )}
       {showList && (
         <ul className="city-list" id={listId} role="listbox">

@@ -53,6 +53,18 @@ export interface Area {
   isCountry: boolean;
 }
 
+/** Where the group meets before the first stop. Any kind of place. */
+export interface MeetingPoint {
+  placeId: string;
+  name: string;
+  address: string;
+  location: LatLng | null;
+  googleMapsUri: string | null;
+}
+
+/** RouteLeg.fromStopId for the leg from the meeting point to the first stop. */
+export const MEETING_POINT_ID = 0;
+
 /** A town/city suggestion while typing. */
 export interface CitySuggestion {
   placeId: string;
@@ -98,6 +110,7 @@ export interface Crawl {
   /** ISO country code chosen when the crawl was created (null for older crawls). */
   countryCode: string | null;
   area: Area | null;
+  meetingPoint: MeetingPoint | null;
 }
 
 export interface CreatedCrawl {
@@ -106,6 +119,7 @@ export interface CreatedCrawl {
 }
 
 export interface RouteLeg {
+  /** MEETING_POINT_ID (0) for the leg from the meeting point. */
   fromStopId: number;
   toStopId: number;
   distanceMeters: number;

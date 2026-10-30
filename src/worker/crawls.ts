@@ -1,6 +1,6 @@
-import { MAX_STOPS, type Area, type Crawl, type CrawlSummary, type CreatedCrawl, type Stop } from "../shared/types";
+import { MAX_STOPS, type Area, type MeetingPoint, type Crawl, type CrawlSummary, type CreatedCrawl, type Stop } from "../shared/types";
 import type { Env } from "./env";
-import { countryName, countryPlaceId, getArea, getPlace, isPlaceId } from "./google";
+import { countryName, countryPlaceId, getArea, getMeetingPoint, getPlace, isPlaceId } from "./google";
 import { getUser } from "./auth";
 import { randomToken, sha256 } from "./crypto";
 import { HttpError } from "./http";
@@ -13,6 +13,7 @@ interface CrawlRow {
   owner_id: number | null;
   country_code: string | null;
   area_place_id: string | null;
+  meet_place_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -156,7 +157,18 @@ export async function getCrawl(request: Request, env: Env, slug: string): Promis
     hasValidToken: await tokenMatches(request, crawl),
     countryCode: crawl.country_code,
     area: await loadArea(env, crawl.area_place_id),
+    meetingPoint: await loadMeetingPoint(env, crawl.meet_place_id),
   };
+}
+
+async function loadMeetingPoint(env: Env, placeId: string | null): Promise<MeetingPoint | null> {
+  if (!placeId) return null;
+  try {
+    return await getMeetingPoint(env, placeId);
+  } catch (err) {
+    console.error("Could not load meeting point", placeId, err);
+    return null;
+  }
 }
 
 /** Live details of a crawl's area; a Google hiccup just means no area. */
@@ -218,23 +230,28 @@ export async function claimCrawls(env: Env, userId: number, body: { crawls?: unk
  * them) the route follows exactly that sequence, so it can't lag behind a
  * delete or reorder that is still being saved. Ids must belong to this crawl.
  */
-export async function getStopsForRoute(env: Env, slug: string, order: number[] | null): Promise<Stop[]> {
+export async function getStopsForRoute(
+  env: Env,
+  slug: string,
+  order: number[] | null,
+): Promise<{ meetPlaceId: string | null; stops: Stop[] }> {
   const crawl = await loadCrawl(env, slug);
   const stops = await listStops(env, crawl.id);
-  if (!order) return stops;
+  const meetPlaceId = crawl.meet_place_id;
+  if (!order) return { meetPlaceId, stops };
   const byId = new Map(stops.map((s) => [s.id, s]));
   if (new Set(order).size !== order.length || !order.every((id) => byId.has(id))) {
     throw new HttpError(409, "Stop list is out of date, please refresh");
   }
-  return order.map((id) => byId.get(id)!);
+  return { meetPlaceId, stops: order.map((id) => byId.get(id)!) };
 }
 
-/** Renames a crawl and/or changes its country and town. */
+/** Renames a crawl, changes its country/town, and/or sets or clears its meeting point. */
 export async function updateCrawl(
   request: Request,
   env: Env,
   slug: string,
-  body: { name?: unknown; countryCode?: unknown; cityPlaceId?: unknown; sessionToken?: unknown },
+  body: { name?: unknown; countryCode?: unknown; cityPlaceId?: unknown; sessionToken?: unknown; meetPlaceId?: unknown },
 ) {
   const crawl = await requireEdit(request, env, slug);
   const sets: string[] = [];
@@ -248,6 +265,20 @@ export async function updateCrawl(
     const { countryCode, areaPlaceId } = await resolveArea(env, body);
     sets.push("country_code = ?", "area_place_id = ?");
     values.push(countryCode, areaPlaceId);
+  }
+  if ("meetPlaceId" in body) {
+    let meet: string | null = null;
+    if (body.meetPlaceId !== null) {
+      if (!isPlaceId(body.meetPlaceId)) throw new HttpError(400, "Invalid meeting point");
+      const sessionToken =
+        typeof body.sessionToken === "string" && /^[A-Za-z0-9_-]{8,64}$/.test(body.sessionToken)
+          ? body.sessionToken
+          : null;
+      // Validates the place with Google (and ends the autocomplete session).
+      meet = (await getMeetingPoint(env, body.meetPlaceId, sessionToken)).placeId;
+    }
+    sets.push("meet_place_id = ?");
+    values.push(meet);
   }
   if (!sets.length) throw new HttpError(400, "Nothing to update");
   await env.DB.prepare(

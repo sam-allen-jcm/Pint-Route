@@ -62,7 +62,7 @@ pages and say so in your reply:
 | Account: email, display name, PBKDF2 password hash, terms version and acceptance time | D1 `users` | Until deletion is requested (by email; no self-serve deletion yet) |
 | Sessions (SHA-256 of cookie token, expiry) | D1 `sessions`, cookie `pr_session` | 30 days / logout / password reset |
 | Password reset tokens (SHA-256, expiry) | D1 `password_resets` | 1 hour validity; deleted when used or superseded |
-| Crawls: name, Place IDs, order, visited dates, notes, country code, area Place ID, owner | D1 `crawls`, `stops` | Until deleted. Public to anyone with the share link |
+| Crawls: name, Place IDs, order, visited dates, notes, country code, area Place ID, meeting point Place ID, owner | D1 `crawls`, `stops` | Until deleted. Public to anyone with the share link |
 | Guest edit tokens, last country | Browser localStorage `pint-route:crawls`, `pint-route:last-country` | Until cleared |
 | Location ("near me" only) | Sent to Worker and Google, not stored; rounded copy cached ≤5 min | Transient |
 | IP address, request logs | Cloudflare (Workers observability logs); rate-limiter keys (IP, email) | Short-term |

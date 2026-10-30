@@ -25,6 +25,8 @@ const EVENT_LABELS: Record<string, string> = {
   crawl_renamed: "Crawl renamed",
   crawl_area_changed: "Crawl town changed",
   crawl_deleted: "Crawl deleted",
+  meeting_point_set: "Meeting point set",
+  meeting_point_removed: "Meeting point removed",
   stop_added: "Pub added",
   stop_removed: "Pub removed",
   stops_reordered: "Pubs reordered",

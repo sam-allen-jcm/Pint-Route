@@ -141,6 +141,15 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 - The area's location and bounds are fetched live (Essentials fields, cached 5 minutes). A crawl
   with no stops opens with the map framed on it, and text searches prefer results there.
 
+### Meeting point
+
+- A crawl can have an optional **meeting point** before stop 1. It can be any place (a market,
+  station, landmark or address), chosen with Places Autocomplete without a type filter and biased
+  to the crawl's town. Only its Place ID is stored (`crawls.meet_place_id`); its name, address and
+  location are fetched live.
+- The walking route starts there, the map shows it with a 🚩 marker, and before any pubs are
+  added, pub searches measure distance from it.
+
 ### Walking route
 
 - Routes API (`WALK`) gives each leg's time, distance and line. Google sticks to official
@@ -224,6 +233,7 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 | `GET /api/places?ids=a,b,c` | – | Live details for stops |
 | `GET /api/places/photo?name=&w=` | – | Redirect to a place photo |
 | `GET /api/places/cities?q=&country=GB&session=` | – | Town/city suggestions within a country |
+| `GET /api/places/anywhere?q=&country=&bias=&session=` | – | Any-place suggestions (for meeting points) |
 | `POST /api/auth/register` | – | `{ name, email, password }` → creates account, sets session cookie |
 | `POST /api/auth/login` | – | `{ email, password }` → sets session cookie |
 | `POST /api/auth/logout` | session | Ends the session |
@@ -234,7 +244,7 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 | `POST /api/me/claim` | session | `{ crawls: [{ slug, editToken }] }` → moves guest crawls into the account |
 | `POST /api/crawls` | – | `{ name, countryCode?, cityPlaceId?, sessionToken? }` → `{ slug, editToken }` (owned by the user if logged in) |
 | `GET /api/crawls/:slug` | optional | Crawl + stops (`canEdit` from the token or ownership, `isOwner`) |
-| `PATCH /api/crawls/:slug` | edit | `{ name }` and/or `{ countryCode, cityPlaceId?, sessionToken? }` |
+| `PATCH /api/crawls/:slug` | edit | `{ name }`, `{ countryCode, cityPlaceId?, sessionToken? }` and/or `{ meetPlaceId \| null, sessionToken? }` |
 | `DELETE /api/crawls/:slug` | edit | Delete crawl |
 | `GET /api/crawls/:slug/route?stops=1,2,3` | – | Walking route through the given stop ids in that order (defaults to the saved order): per-leg time, distance and polyline |
 | `POST /api/crawls/:slug/stops` | edit | Add a stop `{ placeId }` |

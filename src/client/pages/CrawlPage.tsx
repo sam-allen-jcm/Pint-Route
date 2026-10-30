@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import type { Crawl, CrawlRoute, PlaceDetails, PlaceSummary, Stop } from "../../shared/types";
+import { MEETING_POINT_ID, type Crawl, type CrawlRoute, type PlaceDetails, type PlaceSummary, type RouteLeg, type Stop } from "../../shared/types";
 import { api, ApiError } from "../api";
 import { AreaSheet } from "../components/AreaSheet";
+import { MeetingPointSheet } from "../components/MeetingPointSheet";
 import { CrawlMap } from "../components/CrawlMap";
 import { SearchPanel } from "../components/SearchPanel";
 import { ShareSheet } from "../components/ShareSheet";
@@ -48,6 +49,7 @@ export function CrawlPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
   const [editingArea, setEditingArea] = useState(false);
+  const [editingMeeting, setEditingMeeting] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
 
@@ -104,10 +106,13 @@ export function CrawlPage() {
   }, [placeIds, places]);
 
   // ---- Walking route, refetched whenever the stops on screen change ----
-  const routeKey = crawl?.stops.map((s) => s.id).join(",") ?? "";
+  // Includes the meeting point, so changing it refetches the route.
+  const meetId = crawl?.meetingPoint?.placeId ?? "";
+  const routeKey = `${meetId}|${crawl?.stops.map((s) => s.id).join(",") ?? ""}`;
   useEffect(() => {
-    const stopIds = routeKey ? routeKey.split(",").map(Number) : [];
-    if (stopIds.length < 2) {
+    const [meet, ids] = routeKey.split("|");
+    const stopIds = ids ? ids.split(",").map(Number) : [];
+    if (stopIds.length + (meet && stopIds.length ? 1 : 0) < 2) {
       setRoute(null);
       setRouteError(null);
       return;
@@ -152,6 +157,12 @@ export function CrawlPage() {
   const visitedCount = stops.filter((s) => s.visitedOn).length;
   // The next pub gets added after the last stop, so search results are measured from there.
   const lastStopPlace = [...stops].reverse().map((s) => places[s.placeId]).find((p) => p?.location) ?? null;
+  // Before any pubs are added, measure searches from the meeting point.
+  const searchFrom = lastStopPlace
+    ? { name: lastStopPlace.name, location: lastStopPlace.location, kind: "last stop" as const }
+    : crawl.meetingPoint?.location
+      ? { name: crawl.meetingPoint.name, location: crawl.meetingPoint.location, kind: "meeting point" as const }
+      : null;
 
   // ---- Edit actions ----
   async function act<T>(fn: (token: string | null) => Promise<T>): Promise<T | undefined> {
@@ -228,8 +239,12 @@ export function CrawlPage() {
     if (i >= stops.length - 1) return null;
     return legByPair.get(`${stops[i].id}>${stops[i + 1].id}`) ?? null;
   }
-  const currentLegs = stops.slice(0, -1).flatMap((_, i) => legAfter(i) ?? []);
-  const routeFresh = stops.length >= 2 && currentLegs.length === stops.length - 1;
+  const meeting = crawl.meetingPoint;
+  // Walk from the meeting point to the first pub.
+  const meetingLeg = meeting && stops.length ? (legByPair.get(`${MEETING_POINT_ID}>${stops[0].id}`) ?? null) : null;
+  const currentLegs = [...(meetingLeg ? [meetingLeg] : []), ...stops.slice(0, -1).flatMap((_, i) => legAfter(i) ?? [])];
+  const expectedLegs = Math.max(stops.length - 1, 0) + (meeting && stops.length ? 1 : 0);
+  const routeFresh = expectedLegs > 0 && currentLegs.length === expectedLegs;
   const shownRoute: CrawlRoute | null = route
     ? {
         legs: currentLegs,
@@ -238,8 +253,46 @@ export function CrawlPage() {
       }
     : null;
 
+  const meetingSection =
+    meeting || canEdit ? (
+      <div className="meeting">
+        {meeting ? (
+          <article className="stop meeting-card">
+            <div className="stop-main">
+              <div className="stop-num meeting-icon" aria-label="Meeting point">
+                🚩
+              </div>
+              <div className="stop-body">
+                <div className="meeting-label">Meeting point</div>
+                <h3 className="stop-name">{meeting.name}</h3>
+                {meeting.address && <div className="stop-address">{meeting.address}</div>}
+                {meeting.googleMapsUri && (
+                  <a className="small-link" href={meeting.googleMapsUri} target="_blank" rel="noreferrer">
+                    Open in Google Maps ↗
+                  </a>
+                )}
+              </div>
+            </div>
+            {canEdit && (
+              <div className="stop-actions">
+                <button type="button" className="text-btn" onClick={() => setEditingMeeting(true)}>
+                  Change
+                </button>
+              </div>
+            )}
+          </article>
+        ) : (
+          <button type="button" className="add-meeting" onClick={() => setEditingMeeting(true)}>
+            🚩 Add a meeting point <span className="optional">(optional)</span>
+          </button>
+        )}
+        {meeting && stops.length > 0 && <LegRow leg={meetingLeg} failed={Boolean(routeError)} label="Walk to the first stop" />}
+      </div>
+    ) : null;
+
   const stopsPanel = (
     <section className="stack">
+      {meetingSection}
       {stops.length === 0 ? (
         <div className="empty">
           <div className="empty-icon" aria-hidden>
@@ -268,18 +321,7 @@ export function CrawlPage() {
                   onRemove={() => remove(stop)}
                   onUpdate={(patch) => updateStop(stop, patch)}
                 />
-                {i < stops.length - 1 && (
-                  <div className="leg" aria-label="Walk to next stop">
-                    <span className="leg-line" aria-hidden />
-                    <span className="leg-text">
-                      {leg
-                        ? `🚶 ${formatDuration(leg.durationSeconds)} · ${formatDistance(leg.distanceMeters)}${leg.direct ? " · just across the road" : ""}`
-                        : routeError
-                          ? "🚶 walk"
-                          : "🚶 …"}
-                    </span>
-                  </div>
-                )}
+                {i < stops.length - 1 && <LegRow leg={leg} failed={Boolean(routeError)} />}
               </li>
             );
           })}
@@ -300,7 +342,8 @@ export function CrawlPage() {
       stops={stops}
       places={places}
       route={shownRoute}
-      routeUpdating={stops.length >= 2 && !routeFresh && !routeError}
+      routeUpdating={expectedLegs > 0 && !routeFresh && !routeError}
+      meetingPoint={meeting}
       routeError={routeError}
       area={crawl.area}
     />
@@ -384,7 +427,7 @@ export function CrawlPage() {
           {tab === "add" && canEdit ? (
             <SearchPanel
               area={crawl.area}
-              from={lastStopPlace}
+              from={searchFrom}
               addedPlaceIds={new Set(placeIds)}
               stopCount={stops.length}
               onAdd={async (p) => {
@@ -406,6 +449,14 @@ export function CrawlPage() {
         {canEdit && <TabButton active={tab === "add"} onClick={() => setTab("add")} icon="➕" label="Add pubs" />}
       </nav>
 
+      {editingMeeting && (
+        <MeetingPointSheet
+          crawl={crawl}
+          editToken={editToken}
+          onSaved={(updated) => setCrawl(updated)}
+          onClose={() => setEditingMeeting(false)}
+        />
+      )}
       {editingArea && (
         <AreaSheet
           crawl={crawl}
@@ -429,5 +480,20 @@ function TabButton({ active, onClick, icon, label }: { active: boolean; onClick:
       </span>
       {label}
     </button>
+  );
+}
+
+function LegRow({ leg, failed, label = "Walk to next stop" }: { leg: RouteLeg | null; failed: boolean; label?: string }) {
+  return (
+    <div className="leg" aria-label={label}>
+      <span className="leg-line" aria-hidden />
+      <span className="leg-text">
+        {leg
+          ? `🚶 ${formatDuration(leg.durationSeconds)} · ${formatDistance(leg.distanceMeters)}${leg.direct ? " · just across the road" : ""}`
+          : failed
+            ? "🚶 walk"
+            : "🚶 …"}
+      </span>
+    </div>
   );
 }

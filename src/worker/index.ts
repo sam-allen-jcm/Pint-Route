@@ -1,4 +1,4 @@
-import { MAX_STOPS, type Bounds, type LatLng } from "../shared/types";
+import { MAX_STOPS, MEETING_POINT_ID, type Bounds, type LatLng } from "../shared/types";
 import { forgotPassword, getUser, login, logout, register, requireUser, resetPassword } from "./auth";
 import {
   addStop,
@@ -14,7 +14,7 @@ import {
   updateStop,
 } from "./crawls";
 import type { Env } from "./env";
-import { getPhotoUri, getPlace, isPlaceId, searchPlaces, suggestCities, walkingRoute } from "./google";
+import { getPhotoUri, getPlace, isPlaceId, searchPlaces, suggestCities, suggestPlaces, walkingRoute } from "./google";
 import { HttpError, json, readJson } from "./http";
 import { getStats, isAdmin, requireAdmin } from "./stats";
 import { CLIENT_EVENTS, recordUsage } from "./usage";
@@ -64,6 +64,16 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
     const session = url.searchParams.get("session");
     const sessionToken = session && /^[A-Za-z0-9_-]{8,64}$/.test(session) ? session : null;
     return json({ cities: await suggestCities(env, q, country, sessionToken) });
+  }
+  if (path === "/api/places/anywhere" && method === "GET") {
+    // Any kind of place, for meeting points.
+    const q = (url.searchParams.get("q") ?? "").slice(0, 100);
+    const country = (url.searchParams.get("country") ?? "").toUpperCase() || null;
+    const session = url.searchParams.get("session");
+    const sessionToken = session && /^[A-Za-z0-9_-]{8,64}$/.test(session) ? session : null;
+    return json({
+      places: await suggestPlaces(env, q, country, parseBounds(url.searchParams.get("bias")), sessionToken),
+    });
   }
   if (path === "/api/places/photo" && method === "GET") {
     const uri = await getPhotoUri(env, url.searchParams.get("name") ?? "", Number(url.searchParams.get("w") ?? 400));
@@ -162,6 +172,7 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
       await updateCrawl(request, env, slug, body);
       if ("name" in body) track("crawl_renamed");
       if ("countryCode" in body) track("crawl_area_changed");
+      if ("meetPlaceId" in body) track(body.meetPlaceId ? "meeting_point_set" : "meeting_point_removed");
       return json(await getCrawl(request, env, slug));
     }
     if (method === "DELETE") {
@@ -176,7 +187,10 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
     if (order && (order.length > MAX_STOPS || !order.every(Number.isInteger))) throw new HttpError(400, "Invalid stops");
     // No browser caching: the route changes whenever stops change (the Worker
     // still caches Google's answer per place sequence).
-    return json(await walkingRoute(env, await getStopsForRoute(env, m[1], order)));
+    const { meetPlaceId, stops } = await getStopsForRoute(env, m[1], order);
+    // The walk starts at the meeting point, if there is one.
+    const waypoints = [...(meetPlaceId && stops.length ? [{ id: MEETING_POINT_ID, placeId: meetPlaceId }] : []), ...stops];
+    return json(await walkingRoute(env, waypoints));
   }
   if ((m = path.match(new RegExp(`^/api/crawls/${SLUG}/stops$`))) && method === "POST") {
     const stop = await addStop(request, env, m[1], await readJson(request));

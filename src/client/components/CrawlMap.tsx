@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AdvancedMarker, APIProvider, InfoWindow, Map, useMap } from "@vis.gl/react-google-maps";
-import type { Area, CrawlRoute, PlaceDetails, Stop } from "../../shared/types";
+import type { Area, CrawlRoute, PlaceDetails, Stop, MeetingPoint } from "../../shared/types";
 import { decodePolyline, formatDistance, formatDuration, statusLabel } from "../format";
 
 const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY as string | undefined;
@@ -18,6 +18,8 @@ interface Props {
   routeError: string | null;
   /** The crawl's town/country: where the map starts before any stops are added. */
   area: Area | null;
+  /** Optional place the group meets before stop 1. */
+  meetingPoint: MeetingPoint | null;
 }
 
 export function CrawlMap(props: Props) {
@@ -37,7 +39,9 @@ export function CrawlMap(props: Props) {
   );
 }
 
-function CrawlMapInner({ stops, places, route, routeUpdating, routeError, area }: Props) {
+function CrawlMapInner({ stops, places, route, routeUpdating, routeError, area, meetingPoint }: Props) {
+  const [meetOpen, setMeetOpen] = useState(false);
+  const meetAt = meetingPoint?.location ?? null;
   const [openStop, setOpenStop] = useState<number | null>(null);
   const located = stops.filter((s) => places[s.placeId]?.location);
   const open = located.find((s) => s.id === openStop);
@@ -71,6 +75,28 @@ function CrawlMapInner({ stops, places, route, routeUpdating, routeError, area }
             </AdvancedMarker>
           );
         })}
+        {meetAt && (
+          <AdvancedMarker position={meetAt} title={`Meeting point: ${meetingPoint!.name}`} onClick={() => setMeetOpen(true)} zIndex={200}>
+            <div className="pin pin-meet">
+              <span>🚩</span>
+            </div>
+          </AdvancedMarker>
+        )}
+        {meetAt && meetOpen && (
+          <InfoWindow
+            position={meetAt}
+            pixelOffset={[0, -36]}
+            onCloseClick={() => setMeetOpen(false)}
+            headerContent={<strong>Meeting point</strong>}
+          >
+            <div className="info">
+              <div>
+                <strong>{meetingPoint!.name}</strong>
+              </div>
+              <div>{meetingPoint!.address}</div>
+            </div>
+          </InfoWindow>
+        )}
         {open && (
           <InfoWindow
             position={places[open.placeId].location!}
@@ -87,7 +113,10 @@ function CrawlMapInner({ stops, places, route, routeUpdating, routeError, area }
           </InfoWindow>
         )}
         <RouteLines route={route} />
-        <FitBounds points={located.map((s) => places[s.placeId].location!)} area={stops.length === 0 ? area : null} />
+        <FitBounds
+          points={[...(meetAt ? [meetAt] : []), ...located.map((s) => places[s.placeId].location!)]}
+          area={stops.length === 0 && !meetAt ? area : null}
+        />
       </Map>
       {(routeError || routeUpdating || (route && route.legs.length > 0)) && (
         <div className="map-summary">

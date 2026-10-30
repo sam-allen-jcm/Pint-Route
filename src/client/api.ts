@@ -111,6 +111,20 @@ export const api = {
   getCrawl(slug: string, editToken: string | null) {
     return request<Crawl>(`/api/crawls/${slug}`, { editToken });
   },
+  /** Any kind of place (for meeting points). */
+  suggestAnywhere(q: string, countryCode: string | null, bias: Bounds | null, sessionToken: string) {
+    const params = new URLSearchParams({ q, session: sessionToken });
+    if (countryCode) params.set("country", countryCode);
+    if (bias) params.set("bias", [bias.low.lat, bias.low.lng, bias.high.lat, bias.high.lng].map((n) => n.toFixed(4)).join(","));
+    return request<{ places: CitySuggestion[] }>(`/api/places/anywhere?${params}`).then((r) => r.places);
+  },
+  setMeetingPoint(slug: string, meetPlaceId: string | null, sessionToken: string | null, editToken: string | null) {
+    return request<Crawl>(`/api/crawls/${slug}`, {
+      method: "PATCH",
+      body: JSON.stringify({ meetPlaceId, ...(sessionToken ? { sessionToken } : {}) }),
+      editToken,
+    });
+  },
   updateCrawlArea(
     slug: string,
     where: { countryCode: string; cityPlaceId: string | null; sessionToken: string | null },
