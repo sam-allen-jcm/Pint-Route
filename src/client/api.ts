@@ -107,7 +107,14 @@ export const api = {
   },
   createCrawl(
     name: string,
-    where: { countryCode: string; cityPlaceId: string | null; sessionToken: string | null; startsAt: string | null },
+    where: {
+      countryCode: string;
+      cityPlaceId: string | null;
+      sessionToken: string | null;
+      startsAt: string | null;
+      /** Omit to use the default (45 minutes). */
+      minutesPerStop?: number;
+    },
   ) {
     return request<CreatedCrawl>("/api/crawls", { method: "POST", body: JSON.stringify({ name, ...where }) });
   },

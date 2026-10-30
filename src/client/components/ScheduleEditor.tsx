@@ -2,7 +2,14 @@ import { useEffect, useState, type FormEvent } from "react";
 import { DEFAULT_MINUTES_PER_STOP, type Crawl } from "../../shared/types";
 import { api } from "../api";
 
-const DURATIONS = [20, 30, 45, 60, 75, 90, 120];
+/** Choices for "Time at each pub" (minutes). */
+export const DURATIONS = [20, 30, 45, 60, 75, 90, 120];
+
+/** 45 → "45 minutes", 90 → "1 h 30 min", 120 → "2 hours" */
+export function durationLabel(m: number): string {
+  if (m < 60) return `${m} minutes`;
+  return m % 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m / 60} hour${m > 60 ? "s" : ""}`;
+}
 
 interface Props {
   crawl: Crawl;
@@ -75,7 +82,7 @@ export function ScheduleEditor({ crawl, editToken, onSaved }: Props) {
           <select className="select" value={perStop} onChange={(e) => setPerStop(Number(e.target.value))}>
             {DURATIONS.map((m) => (
               <option key={m} value={m}>
-                {m < 60 ? `${m} minutes` : m % 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m / 60} hour${m > 60 ? "s" : ""}`}
+                {durationLabel(m)}
               </option>
             ))}
           </select>

@@ -5,6 +5,7 @@ import { api } from "../api";
 import { useAuth } from "../auth";
 import { SiteFooter } from "../components/SiteFooter";
 import { CityPicker, type PickedCity } from "../components/CityPicker";
+import { DURATIONS, durationLabel } from "../components/ScheduleEditor";
 import { countries, defaultCountry, rememberCountry } from "../countries";
 import { savedCrawls } from "../storage";
 
@@ -30,6 +31,8 @@ export function HomePage() {
   const [sessionToken] = useState(() => crypto.randomUUID());
   const [startDate, setStartDate] = useState("");
   const [startTime, setStartTime] = useState("");
+  /** "" = not chosen (uses the 45-minute default). */
+  const [perStop, setPerStop] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accountCrawls, setAccountCrawls] = useState<CrawlSummary[] | null>(null);
@@ -71,6 +74,7 @@ export function HomePage() {
         cityPlaceId: city?.placeId ?? null,
         sessionToken: city ? sessionToken : null,
         startsAt: startDate && startTime ? `${startDate}T${startTime}` : null,
+        ...(perStop ? { minutesPerStop: Number(perStop) } : {}),
       });
       rememberCountry(countryCode);
       savedCrawls.save(slug, name.trim(), editToken);
@@ -161,6 +165,20 @@ export function HomePage() {
               <span className="hint">Add both a date and a time, or leave both blank.</span>
             ) : null}
           </div>
+          <label className="field">
+            <span>
+              Time at each pub <span className="optional">(optional)</span>
+            </span>
+            <select className="select" value={perStop} onChange={(e) => setPerStop(e.target.value)}>
+              <option value="">Not sure yet (45 minutes)</option>
+              {DURATIONS.map((m) => (
+                <option key={m} value={m}>
+                  {durationLabel(m)}
+                </option>
+              ))}
+            </select>
+            <span className="hint">Used to estimate when you'll reach each pub. You can change it later.</span>
+          </label>
           <label className="field">
             <span>Crawl name</span>
             <input

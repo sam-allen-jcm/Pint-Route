@@ -384,6 +384,9 @@ export function CrawlPage() {
     </div>
   );
 
+  // "London" for a town (first part of "London, UK"), or the country name.
+  const areaLabel = crawl.area ? (crawl.area.isCountry ? crawl.area.name : crawl.area.name.split(",")[0]) : null;
+
   // Sections for the header buttons (desktop) or ☰ menu (mobile). On wide
   // screens the map is always shown beside the list, so it isn't a section.
   const sections = [
@@ -418,39 +421,42 @@ export function CrawlPage() {
             </Link>
             <div className="topbar-title">
               {!wide && <div className="topbar-eyebrow">Pint Route</div>}
-              {renaming ? (
-                <form onSubmit={rename}>
-                  <input
-                    className="title-input"
-                    value={nameDraft}
-                    maxLength={80}
-                    autoFocus
-                    onChange={(e) => setNameDraft(e.target.value)}
-                    onBlur={rename}
-                    aria-label="Crawl name"
-                  />
-                </form>
-              ) : (
-                <h1
-                  className={canEdit ? "editable" : ""}
-                  onClick={() => {
-                    if (!canEdit) return;
-                    setNameDraft(crawl.name);
-                    setRenaming(true);
-                  }}
-                  title={canEdit ? "Tap to rename" : undefined}
-                >
-                  {crawl.name}
-                </h1>
-              )}
-              <div className="topbar-sub">
+              {/* Line 1: crawl name, then its town. Line 2: the details. */}
+              <div className="title-row">
+                {renaming ? (
+                  <form onSubmit={rename} className="title-form">
+                    <input
+                      className="title-input"
+                      value={nameDraft}
+                      maxLength={80}
+                      autoFocus
+                      onChange={(e) => setNameDraft(e.target.value)}
+                      onBlur={rename}
+                      aria-label="Crawl name"
+                    />
+                  </form>
+                ) : (
+                  <h1
+                    className={canEdit ? "editable" : ""}
+                    onClick={() => {
+                      if (!canEdit) return;
+                      setNameDraft(crawl.name);
+                      setRenaming(true);
+                    }}
+                    title={canEdit ? "Tap to rename" : undefined}
+                  >
+                    {crawl.name}
+                  </h1>
+                )}
                 {canEdit ? (
                   <button className="area-chip" onClick={() => setEditingArea(true)} title="Change town">
-                    📍 {crawl.area ? (crawl.area.isCountry ? crawl.area.name : crawl.area.name.split(",")[0]) : "Set town"} ✎
+                    📍 {areaLabel ?? "Set town"} ✎
                   </button>
                 ) : (
-                  crawl.area && !crawl.area.isCountry && `${crawl.area.name.split(",")[0]} · `
+                  areaLabel && <span className="area-chip static">📍 {areaLabel}</span>
                 )}
+              </div>
+              <div className="topbar-sub">
                 {stops.length} {stops.length === 1 ? "stop" : "stops"}
                 {stops.length > 0 && ` · ${visitedCount} visited`}
                 {routeFresh && shownRoute && ` · ${formatDuration(shownRoute.durationSeconds)} walk`}

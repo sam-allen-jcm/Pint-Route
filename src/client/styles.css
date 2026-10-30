@@ -1141,16 +1141,31 @@ textarea:focus {
   text-align: right;
 }
 
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.title-row h1,
+.title-form {
+  min-width: 0;
+  flex: 0 1 auto;
+}
 .area-chip {
+  flex: none;
   border: none;
   background: rgb(255 255 255 / 0.12);
-  color: inherit;
+  color: #f6ead2;
   font: inherit;
   font-size: 0.8rem;
-  padding: 1px 8px;
-  margin-right: 6px;
+  padding: 2px 9px;
   border-radius: 999px;
   cursor: pointer;
+  white-space: nowrap;
+}
+.area-chip.static {
+  cursor: default;
 }
 .result-distance {
   font-size: 0.8rem;
