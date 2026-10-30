@@ -1,11 +1,15 @@
 import { useState, type FormEvent } from "react";
-import type { Area, LatLng, PlaceSummary } from "../../shared/types";
+import { distanceMeters } from "../../shared/geo";
+import type { Area, LatLng, PlaceDetails, PlaceSummary } from "../../shared/types";
 import { MAX_STOPS } from "../../shared/types";
 import { api } from "../api";
+import { formatDistance } from "../format";
 
 interface Props {
   /** The crawl's town/country; text searches prefer results there. */
   area: Area | null;
+  /** The crawl's last stop: results are measured, sorted and biased from there. */
+  from: PlaceDetails | null;
   addedPlaceIds: Set<string>;
   stopCount: number;
   onAdd: (place: PlaceSummary) => Promise<void>;
@@ -23,24 +27,45 @@ function getPosition(): Promise<LatLng> {
   });
 }
 
-export function SearchPanel({ area, addedPlaceIds, stopCount, onAdd }: Props) {
+/** Where result distances are measured from, and how to describe it. */
+interface Origin {
+  location: LatLng;
+  label: string; // "you" or a pub name
+}
+
+type Result = PlaceSummary & { distance: number | null };
+
+export function SearchPanel({ area, from, addedPlaceIds, stopCount, onAdd }: Props) {
   const [query, setQuery] = useState("");
   const [near, setNear] = useState<LatLng | null>(null);
-  const [results, setResults] = useState<PlaceSummary[] | null>(null);
+  const [results, setResults] = useState<Result[] | null>(null);
+  const [origin, setOrigin] = useState<Origin | null>(null);
   const [hidden, setHidden] = useState(0);
   const [loading, setLoading] = useState<"text" | "near" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState<string | null>(null);
 
-  async function run(q: string, location: LatLng | null, mode: "text" | "near") {
+  async function run(q: string, gps: LatLng | null, mode: "text" | "near") {
     setLoading(mode);
     setError(null);
+    // "Near me" measures from the user. Otherwise measure from the last stop
+    // (the next pub is walked to from there), falling back to the user.
+    const lastStop = from?.location ? { location: from.location, label: from.name } : null;
+    const you = gps ? { location: gps, label: "you" } : null;
+    const measureFrom = mode === "near" ? you : (lastStop ?? you);
     try {
-      const places = await api.searchPlaces(q, location, area?.viewport ?? null);
+      // Bias the search towards that point, else towards the crawl's town.
+      const places = await api.searchPlaces(q, measureFrom?.location ?? null, measureFrom ? null : (area?.viewport ?? null));
       // Hide anything that isn't trading (closed for good, or temporarily).
       const open = places.filter((p) => p.businessStatus === "OPERATIONAL");
+      const withDistance: Result[] = open.map((p) => ({
+        ...p,
+        distance: measureFrom && p.location ? distanceMeters(measureFrom.location, p.location) : null,
+      }));
+      if (measureFrom) withDistance.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
       setHidden(places.length - open.length);
-      setResults(open);
+      setOrigin(measureFrom);
+      setResults(withDistance);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -97,7 +122,9 @@ export function SearchPanel({ area, addedPlaceIds, stopCount, onAdd }: Props) {
       <button type="button" className="btn btn-ghost btn-block" onClick={nearMe} disabled={loading !== null}>
         📍 {loading === "near" ? "Finding pubs near you…" : query.trim() ? `"${query.trim()}" near me` : "Pubs, bars & breweries near me"}
       </button>
-      {near ? (
+      {from?.location ? (
+        <p className="muted small">Closest to {from.name} (your last stop) first.</p>
+      ) : near ? (
         <p className="muted small">Results are biased towards your current location.</p>
       ) : (
         area && <p className="muted small">Searching around {area.name}.</p>
@@ -120,6 +147,11 @@ export function SearchPanel({ area, addedPlaceIds, stopCount, onAdd }: Props) {
                       <div className="result-meta">
                         {p.typeLabel && <span className="tag">{p.typeLabel}</span>} {p.address}
                       </div>
+                      {p.distance !== null && origin && (
+                        <div className="result-distance">
+                          📍 {formatDistance(p.distance)} from {origin.label}
+                        </div>
+                      )}
                     </div>
                     <button
                       type="button"

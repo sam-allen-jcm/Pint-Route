@@ -133,8 +133,20 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
   that country (`(cities)` types, with a session token so typing plus the final lookup bill as
   one session). The Worker checks the town is in the chosen country.
 - Without a town, the country's own Place ID is looked up and stored instead.
+- Editors can change the country/town later by tapping the 📍 chip in the crawl's header.
+- Once a crawl has stops, pub searches are biased towards, sorted by and labelled with the
+  straight-line distance from the **last stop** ("120 m from The Wheatsheaf"); "near me"
+  results are measured from the user.
 - The area's location and bounds are fetched live (Essentials fields, cached 5 minutes). A crawl
   with no stops opens with the map framed on it, and text searches prefer results there.
+
+### Walking route
+
+- Routes API (`WALK`) gives each leg's time, distance and line. Google sticks to official
+  pedestrian crossings, so two pubs facing each other across a road can get a long detour.
+  When the stops are under **200 m** apart and Google's route is more than **twice** the
+  straight-line distance, the leg is replaced by the direct way across (straight line, ×1.2
+  for the distance, at 1.3 m/s), labelled "just across the road".
 
 ### Closed pubs
 
@@ -199,7 +211,7 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 | `POST /api/me/claim` | session | `{ crawls: [{ slug, editToken }] }` → moves guest crawls into the account |
 | `POST /api/crawls` | – | `{ name, countryCode?, cityPlaceId?, sessionToken? }` → `{ slug, editToken }` (owned by the user if logged in) |
 | `GET /api/crawls/:slug` | optional | Crawl + stops (`canEdit` from the token or ownership, `isOwner`) |
-| `PATCH /api/crawls/:slug` | edit | Rename `{ name }` |
+| `PATCH /api/crawls/:slug` | edit | `{ name }` and/or `{ countryCode, cityPlaceId?, sessionToken? }` |
 | `DELETE /api/crawls/:slug` | edit | Delete crawl |
 | `GET /api/crawls/:slug/route?stops=1,2,3` | – | Walking route through the given stop ids in that order (defaults to the saved order): per-leg time, distance and polyline |
 | `POST /api/crawls/:slug/stops` | edit | Add a stop `{ placeId }` |

@@ -1026,3 +1026,21 @@ textarea:focus {
   color: var(--muted);
   text-align: right;
 }
+
+.area-chip {
+  border: none;
+  background: rgb(255 255 255 / 0.12);
+  color: inherit;
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 1px 8px;
+  margin-right: 6px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.result-distance {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--sign-green-2);
+  margin-top: 2px;
+}

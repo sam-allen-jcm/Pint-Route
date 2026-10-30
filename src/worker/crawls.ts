@@ -229,13 +229,31 @@ export async function getStopsForRoute(env: Env, slug: string, order: number[] |
   return order.map((id) => byId.get(id)!);
 }
 
-export async function renameCrawl(request: Request, env: Env, slug: string, body: { name?: unknown }) {
+/** Renames a crawl and/or changes its country and town. */
+export async function updateCrawl(
+  request: Request,
+  env: Env,
+  slug: string,
+  body: { name?: unknown; countryCode?: unknown; cityPlaceId?: unknown; sessionToken?: unknown },
+) {
   const crawl = await requireEdit(request, env, slug);
-  const name = cleanName(body.name);
+  const sets: string[] = [];
+  const values: (string | null)[] = [];
+  if ("name" in body) {
+    sets.push("name = ?");
+    values.push(cleanName(body.name));
+  }
+  if ("countryCode" in body) {
+    if (!body.countryCode) throw new HttpError(400, "Choose a country");
+    const { countryCode, areaPlaceId } = await resolveArea(env, body);
+    sets.push("country_code = ?", "area_place_id = ?");
+    values.push(countryCode, areaPlaceId);
+  }
+  if (!sets.length) throw new HttpError(400, "Nothing to update");
   await env.DB.prepare(
-    "UPDATE crawls SET name = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?",
+    `UPDATE crawls SET ${sets.join(", ")}, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?`,
   )
-    .bind(name, crawl.id)
+    .bind(...values, crawl.id)
     .run();
 }
 

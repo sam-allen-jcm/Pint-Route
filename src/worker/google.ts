@@ -12,6 +12,7 @@ import type {
   PlaceSummary,
 } from "../shared/types";
 import { isCountryCode } from "../shared/countries";
+import { distanceMeters, encodePolyline } from "../shared/geo";
 import { cached } from "./cache";
 import type { Env } from "./env";
 import { HttpError } from "./http";
@@ -22,6 +23,8 @@ const ROUTES = "https://routes.googleapis.com/directions/v2:computeRoutes";
 const DETAILS_TTL = 300; // 5 minutes
 const SEARCH_TTL = 300;
 const ROUTE_TTL = 600;
+// Bumped when the route post-processing changes, so cached routes are recomputed.
+const ROUTE_VERSION = 2;
 const PHOTO_TTL = 1800;
 
 // Google place types that count as somewhere to drink. There is no "taproom"
@@ -219,22 +222,32 @@ export async function getPhotoUri(env: Env, name: string, maxWidth: number): Pro
   return photoUri;
 }
 
+const DIRECT_MAX_METERS = 200;
+const DIRECT_DETOUR_RATIO = 2;
+const WALKING_SPEED = 1.3; // metres per second
+
 /** Walking route through the stops, in order, via Routes API computeRoutes. */
 export function walkingRoute(env: Env, stops: { id: number; placeId: string }[]): Promise<CrawlRoute> {
   if (stops.length < 2) return Promise.resolve({ legs: [], distanceMeters: 0, durationSeconds: 0 });
-  const key = `route:${stops.map((s) => s.placeId).join(">")}`;
+  const key = `route${ROUTE_VERSION}:${stops.map((s) => s.placeId).join(">")}`;
   return cached(key, ROUTE_TTL, async () => {
     const wp = (s: { placeId: string }) => ({ placeId: s.placeId });
     const data = await google<{
       routes?: {
         distanceMeters?: number;
         duration?: string;
-        legs?: { distanceMeters?: number; duration?: string; polyline?: { encodedPolyline?: string } }[];
+        legs?: {
+          distanceMeters?: number;
+          duration?: string;
+          polyline?: { encodedPolyline?: string };
+          startLocation?: { latLng?: { latitude: number; longitude: number } };
+          endLocation?: { latLng?: { latitude: number; longitude: number } };
+        }[];
       }[];
     }>(
       env,
       ROUTES,
-      "routes.distanceMeters,routes.duration,routes.legs.distanceMeters,routes.legs.duration,routes.legs.polyline.encodedPolyline",
+      "routes.legs.distanceMeters,routes.legs.duration,routes.legs.polyline.encodedPolyline,routes.legs.startLocation,routes.legs.endLocation",
       {
         origin: wp(stops[0]),
         destination: wp(stops[stops.length - 1]),
@@ -245,15 +258,36 @@ export function walkingRoute(env: Env, stops: { id: number; placeId: string }[])
     const route = data.routes?.[0];
     if (!route) throw new HttpError(422, "No walking route found between these stops");
     const secs = (d?: string) => (d ? parseInt(d, 10) || 0 : 0);
+    const ll = (p?: { latLng?: { latitude: number; longitude: number } }) =>
+      p?.latLng ? { lat: p.latLng.latitude, lng: p.latLng.longitude } : null;
     // Cached by place sequence (shared across crawls); stop ids are attached below.
-    return {
-      legs: (route.legs ?? []).map((leg) => ({
+    const legs = (route.legs ?? []).map((leg) => {
+      const routed = {
         distanceMeters: leg.distanceMeters ?? 0,
         durationSeconds: secs(leg.duration),
         polyline: leg.polyline?.encodedPolyline ?? null,
-      })),
-      distanceMeters: route.distanceMeters ?? 0,
-      durationSeconds: secs(route.duration),
+        direct: false,
+      };
+      // Google's walking routes only use official crossings, so two pubs facing
+      // each other across a road can get a long detour. When they're very close
+      // and the detour is more than double the direct distance, show the direct way.
+      const from = ll(leg.startLocation);
+      const to = ll(leg.endLocation);
+      if (!from || !to) return routed;
+      const straight = distanceMeters(from, to);
+      if (straight > DIRECT_MAX_METERS || routed.distanceMeters <= straight * DIRECT_DETOUR_RATIO) return routed;
+      const walked = Math.round(straight * 1.2); // allow for getting round things
+      return {
+        distanceMeters: walked,
+        durationSeconds: Math.max(30, Math.round(walked / WALKING_SPEED)),
+        polyline: encodePolyline([from, to]),
+        direct: true,
+      };
+    });
+    return {
+      legs,
+      distanceMeters: legs.reduce((n, l) => n + l.distanceMeters, 0),
+      durationSeconds: legs.reduce((n, l) => n + l.durationSeconds, 0),
     };
   }).then((r) => ({
     ...r,

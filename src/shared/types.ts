@@ -112,6 +112,11 @@ export interface RouteLeg {
   durationSeconds: number;
   /** Google encoded polyline */
   polyline: string | null;
+  /**
+   * True when the stops are so close that Google's route (which sticks to
+   * official crossings) was replaced by the direct way across.
+   */
+  direct: boolean;
 }
 
 export interface CrawlRoute {

@@ -9,7 +9,7 @@ import {
   getCrawl,
   getStopsForRoute,
   removeStop,
-  renameCrawl,
+  updateCrawl,
   reorderStops,
   updateStop,
 } from "./crawls";
@@ -99,7 +99,7 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
     const slug = m[1];
     if (method === "GET") return json(await getCrawl(request, env, slug));
     if (method === "PATCH") {
-      await renameCrawl(request, env, slug, await readJson(request));
+      await updateCrawl(request, env, slug, await readJson(request));
       return json(await getCrawl(request, env, slug));
     }
     if (method === "DELETE") {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { Crawl, CrawlRoute, PlaceDetails, PlaceSummary, Stop } from "../../shared/types";
 import { api, ApiError } from "../api";
+import { AreaSheet } from "../components/AreaSheet";
 import { CrawlMap } from "../components/CrawlMap";
 import { SearchPanel } from "../components/SearchPanel";
 import { ShareSheet } from "../components/ShareSheet";
@@ -45,6 +46,7 @@ export function CrawlPage() {
   const [routeError, setRouteError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
+  const [editingArea, setEditingArea] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
 
@@ -144,6 +146,8 @@ export function CrawlPage() {
 
   const stops = crawl.stops;
   const visitedCount = stops.filter((s) => s.visitedOn).length;
+  // The next pub gets added after the last stop, so search results are measured from there.
+  const lastStopPlace = [...stops].reverse().map((s) => places[s.placeId]).find((p) => p?.location) ?? null;
 
   // ---- Edit actions ----
   async function act<T>(fn: (token: string | null) => Promise<T>): Promise<T | undefined> {
@@ -265,7 +269,7 @@ export function CrawlPage() {
                     <span className="leg-line" aria-hidden />
                     <span className="leg-text">
                       {leg
-                        ? `🚶 ${formatDuration(leg.durationSeconds)} · ${formatDistance(leg.distanceMeters)}`
+                        ? `🚶 ${formatDuration(leg.durationSeconds)} · ${formatDistance(leg.distanceMeters)}${leg.direct ? " · just across the road" : ""}`
                         : routeError
                           ? "🚶 walk"
                           : "🚶 …"}
@@ -330,7 +334,13 @@ export function CrawlPage() {
             </h1>
           )}
           <div className="topbar-sub">
-            {crawl.area && !crawl.area.isCountry && `${crawl.area.name.split(",")[0]} · `}
+            {canEdit ? (
+              <button className="area-chip" onClick={() => setEditingArea(true)} title="Change town">
+                📍 {crawl.area ? (crawl.area.isCountry ? crawl.area.name : crawl.area.name.split(",")[0]) : "Set town"} ✎
+              </button>
+            ) : (
+              crawl.area && !crawl.area.isCountry && `${crawl.area.name.split(",")[0]} · `
+            )}
             {stops.length} {stops.length === 1 ? "stop" : "stops"}
             {stops.length > 0 && ` · ${visitedCount} visited`}
             {routeFresh && shownRoute && ` · ${formatDuration(shownRoute.durationSeconds)} walk`}
@@ -369,6 +379,7 @@ export function CrawlPage() {
           {tab === "add" && canEdit ? (
             <SearchPanel
               area={crawl.area}
+              from={lastStopPlace}
               addedPlaceIds={new Set(placeIds)}
               stopCount={stops.length}
               onAdd={async (p) => {
@@ -390,6 +401,14 @@ export function CrawlPage() {
         {canEdit && <TabButton active={tab === "add"} onClick={() => setTab("add")} icon="➕" label="Add pubs" />}
       </nav>
 
+      {editingArea && (
+        <AreaSheet
+          crawl={crawl}
+          editToken={editToken}
+          onSaved={(updated) => setCrawl(updated)}
+          onClose={() => setEditingArea(false)}
+        />
+      )}
       {sharing && (
         <ShareSheet name={crawl.name} slug={slug} editToken={canEdit ? editToken : null} onClose={() => setSharing(false)} />
       )}

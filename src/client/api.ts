@@ -97,6 +97,13 @@ export const api = {
   getCrawl(slug: string, editToken: string | null) {
     return request<Crawl>(`/api/crawls/${slug}`, { editToken });
   },
+  updateCrawlArea(
+    slug: string,
+    where: { countryCode: string; cityPlaceId: string | null; sessionToken: string | null },
+    editToken: string | null,
+  ) {
+    return request<Crawl>(`/api/crawls/${slug}`, { method: "PATCH", body: JSON.stringify(where), editToken });
+  },
   renameCrawl(slug: string, name: string, editToken: string | null) {
     return request<Crawl>(`/api/crawls/${slug}`, { method: "PATCH", body: JSON.stringify({ name }), editToken });
   },

@@ -25,8 +25,11 @@ export function CityPicker({ countryCode, value, onChange, sessionToken }: Props
   const [loading, setLoading] = useState(false);
   const blurTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  // Changing country clears the town.
+  // Changing country clears the town (but not on first render, so a preset town stays).
+  const lastCountry = useRef(countryCode);
   useEffect(() => {
+    if (lastCountry.current === countryCode) return;
+    lastCountry.current = countryCode;
     setText("");
     setSuggestions([]);
     onChange(null);
