@@ -1,6 +1,8 @@
 import type {
   Crawl,
   CrawlRoute,
+  Bounds,
+  CitySuggestion,
   CrawlSummary,
   CreatedCrawl,
   LatLng,
@@ -66,9 +68,10 @@ export const api = {
     return request<{ claimed: number }>("/api/me/claim", { method: "POST", body: JSON.stringify({ crawls }) });
   },
 
-  searchPlaces(q: string, near: LatLng | null) {
+  searchPlaces(q: string, near: LatLng | null, bias: Bounds | null = null) {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
+    if (bias) params.set("bias", [bias.low.lat, bias.low.lng, bias.high.lat, bias.high.lng].map((n) => n.toFixed(4)).join(","));
     if (near) {
       params.set("lat", near.lat.toFixed(5));
       params.set("lng", near.lng.toFixed(5));
@@ -84,8 +87,12 @@ export const api = {
     return `/api/places/photo?name=${encodeURIComponent(name)}&w=${width}`;
   },
 
-  createCrawl(name: string) {
-    return request<CreatedCrawl>("/api/crawls", { method: "POST", body: JSON.stringify({ name }) });
+  suggestCities(q: string, countryCode: string, sessionToken: string) {
+    const params = new URLSearchParams({ q, country: countryCode, session: sessionToken });
+    return request<{ cities: CitySuggestion[] }>(`/api/places/cities?${params}`).then((r) => r.cities);
+  },
+  createCrawl(name: string, where: { countryCode: string; cityPlaceId: string | null; sessionToken: string | null }) {
+    return request<CreatedCrawl>("/api/crawls", { method: "POST", body: JSON.stringify({ name, ...where }) });
   },
   getCrawl(slug: string, editToken: string | null) {
     return request<Crawl>(`/api/crawls/${slug}`, { editToken });

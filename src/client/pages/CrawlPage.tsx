@@ -293,6 +293,7 @@ export function CrawlPage() {
       route={shownRoute}
       routeUpdating={stops.length >= 2 && !routeFresh && !routeError}
       routeError={routeError}
+      area={crawl.area}
     />
   );
 
@@ -329,6 +330,7 @@ export function CrawlPage() {
             </h1>
           )}
           <div className="topbar-sub">
+            {crawl.area && !crawl.area.isCountry && `${crawl.area.name.split(",")[0]} · `}
             {stops.length} {stops.length === 1 ? "stop" : "stops"}
             {stops.length > 0 && ` · ${visitedCount} visited`}
             {routeFresh && shownRoute && ` · ${formatDuration(shownRoute.durationSeconds)} walk`}
@@ -366,6 +368,7 @@ export function CrawlPage() {
         <main className="crawl-main">
           {tab === "add" && canEdit ? (
             <SearchPanel
+              area={crawl.area}
               addedPlaceIds={new Set(placeIds)}
               stopCount={stops.length}
               onAdd={async (p) => {

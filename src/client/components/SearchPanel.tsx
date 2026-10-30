@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from "react";
-import type { LatLng, PlaceSummary } from "../../shared/types";
+import type { Area, LatLng, PlaceSummary } from "../../shared/types";
 import { MAX_STOPS } from "../../shared/types";
 import { api } from "../api";
 
 interface Props {
+  /** The crawl's town/country; text searches prefer results there. */
+  area: Area | null;
   addedPlaceIds: Set<string>;
   stopCount: number;
   onAdd: (place: PlaceSummary) => Promise<void>;
@@ -21,7 +23,7 @@ function getPosition(): Promise<LatLng> {
   });
 }
 
-export function SearchPanel({ addedPlaceIds, stopCount, onAdd }: Props) {
+export function SearchPanel({ area, addedPlaceIds, stopCount, onAdd }: Props) {
   const [query, setQuery] = useState("");
   const [near, setNear] = useState<LatLng | null>(null);
   const [results, setResults] = useState<PlaceSummary[] | null>(null);
@@ -34,7 +36,7 @@ export function SearchPanel({ addedPlaceIds, stopCount, onAdd }: Props) {
     setLoading(mode);
     setError(null);
     try {
-      const places = await api.searchPlaces(q, location);
+      const places = await api.searchPlaces(q, location, area?.viewport ?? null);
       // Hide anything that isn't trading (closed for good, or temporarily).
       const open = places.filter((p) => p.businessStatus === "OPERATIONAL");
       setHidden(places.length - open.length);
@@ -95,7 +97,11 @@ export function SearchPanel({ addedPlaceIds, stopCount, onAdd }: Props) {
       <button type="button" className="btn btn-ghost btn-block" onClick={nearMe} disabled={loading !== null}>
         📍 {loading === "near" ? "Finding pubs near you…" : query.trim() ? `"${query.trim()}" near me` : "Pubs, bars & breweries near me"}
       </button>
-      {near && <p className="muted small">Results are biased towards your current location.</p>}
+      {near ? (
+        <p className="muted small">Results are biased towards your current location.</p>
+      ) : (
+        area && <p className="muted small">Searching around {area.name}.</p>
+      )}
       {error && <p className="error">{error}</p>}
       {full && <p className="notice">This crawl has the maximum of {MAX_STOPS} stops. Remove one to add more.</p>}
 

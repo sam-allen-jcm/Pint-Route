@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AdvancedMarker, APIProvider, InfoWindow, Map, useMap } from "@vis.gl/react-google-maps";
-import type { CrawlRoute, PlaceDetails, Stop } from "../../shared/types";
+import type { Area, CrawlRoute, PlaceDetails, Stop } from "../../shared/types";
 import { decodePolyline, formatDistance, formatDuration, statusLabel } from "../format";
 
 const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY as string | undefined;
@@ -16,6 +16,8 @@ interface Props {
   /** True while the route for the current stop order is still loading. */
   routeUpdating: boolean;
   routeError: string | null;
+  /** The crawl's town/country: where the map starts before any stops are added. */
+  area: Area | null;
 }
 
 export function CrawlMap(props: Props) {
@@ -35,7 +37,7 @@ export function CrawlMap(props: Props) {
   );
 }
 
-function CrawlMapInner({ stops, places, route, routeUpdating, routeError }: Props) {
+function CrawlMapInner({ stops, places, route, routeUpdating, routeError, area }: Props) {
   const [openStop, setOpenStop] = useState<number | null>(null);
   const located = stops.filter((s) => places[s.placeId]?.location);
   const open = located.find((s) => s.id === openStop);
@@ -44,8 +46,8 @@ function CrawlMapInner({ stops, places, route, routeUpdating, routeError }: Prop
     <div className="map-wrap">
       <Map
         mapId={MAP_ID}
-        defaultCenter={{ lat: 51.5074, lng: -0.1278 }}
-        defaultZoom={13}
+        defaultCenter={area?.center ?? { lat: 51.5074, lng: -0.1278 }}
+        defaultZoom={area ? (area.isCountry ? 5 : 13) : 13}
         gestureHandling="greedy"
         disableDefaultUI
         zoomControl
@@ -85,7 +87,7 @@ function CrawlMapInner({ stops, places, route, routeUpdating, routeError }: Prop
           </InfoWindow>
         )}
         <RouteLines route={route} />
-        <FitBounds points={located.map((s) => places[s.placeId].location!)} />
+        <FitBounds points={located.map((s) => places[s.placeId].location!)} area={stops.length === 0 ? area : null} />
       </Map>
       {(routeError || routeUpdating || (route && route.legs.length > 0)) && (
         <div className="map-summary">
@@ -135,11 +137,33 @@ function RouteLines({ route }: { route: CrawlRoute | null }) {
   return null;
 }
 
-function FitBounds({ points }: { points: google.maps.LatLngLiteral[] }) {
+/**
+ * Frames the stops; with no stops yet, frames the crawl's town or country.
+ */
+function FitBounds({ points, area }: { points: google.maps.LatLngLiteral[]; area: Area | null }) {
   const map = useMap();
-  const key = useMemo(() => points.map((p) => `${p.lat},${p.lng}`).join("|"), [points]);
+  const key = useMemo(
+    () => points.map((p) => `${p.lat},${p.lng}`).join("|") || (area ? `area:${area.placeId}` : ""),
+    [points, area],
+  );
   useEffect(() => {
-    if (!map || points.length === 0) return;
+    if (!map) return;
+    if (points.length === 0) {
+      if (!area) return;
+      if (area.viewport) {
+        map.fitBounds(
+          new google.maps.LatLngBounds(
+            { lat: area.viewport.low.lat, lng: area.viewport.low.lng },
+            { lat: area.viewport.high.lat, lng: area.viewport.high.lng },
+          ),
+          0,
+        );
+      } else {
+        map.setCenter(area.center);
+        map.setZoom(area.isCountry ? 5 : 13);
+      }
+      return;
+    }
     if (points.length === 1) {
       map.setCenter(points[0]);
       map.setZoom(16);

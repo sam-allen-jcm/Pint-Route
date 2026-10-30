@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import type { CrawlSummary } from "../../shared/types";
 import { api } from "../api";
 import { useAuth } from "../auth";
+import { CityPicker, type PickedCity } from "../components/CityPicker";
+import { countries, defaultCountry, rememberCountry } from "../countries";
 import { savedCrawls } from "../storage";
 
 interface ListItem {
@@ -22,6 +24,9 @@ export function HomePage() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [name, setName] = useState("");
+  const [countryCode, setCountryCode] = useState(defaultCountry);
+  const [city, setCity] = useState<PickedCity | null>(null);
+  const [sessionToken] = useState(() => crypto.randomUUID());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accountCrawls, setAccountCrawls] = useState<CrawlSummary[] | null>(null);
@@ -58,7 +63,12 @@ export function HomePage() {
     setBusy(true);
     setError(null);
     try {
-      const { slug, editToken } = await api.createCrawl(name.trim());
+      const { slug, editToken } = await api.createCrawl(name.trim(), {
+        countryCode,
+        cityPlaceId: city?.placeId ?? null,
+        sessionToken: city ? sessionToken : null,
+      });
+      rememberCountry(countryCode);
       savedCrawls.save(slug, name.trim(), editToken);
       navigate(`/c/${slug}?tab=add`);
     } catch (err) {
@@ -104,6 +114,22 @@ export function HomePage() {
       <section className="card">
         <h2>Start a new crawl</h2>
         <form onSubmit={create} className="stack">
+          <label className="field">
+            <span>Country</span>
+            <select className="select" value={countryCode} onChange={(e) => setCountryCode(e.target.value)}>
+              {countries().map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="field">
+            <span>
+              Town or city <span className="optional">(optional)</span>
+            </span>
+            <CityPicker countryCode={countryCode} value={city} onChange={setCity} sessionToken={sessionToken} />
+          </div>
           <label className="field">
             <span>Crawl name</span>
             <input

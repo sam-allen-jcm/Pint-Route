@@ -1,7 +1,17 @@
 // All Google Maps Platform calls live here. The API key never leaves the Worker.
 // Field masks keep every request on the cheapest SKU that covers what we show.
 
-import type { BusinessStatus, CrawlRoute, LatLng, PlaceDetails, PlaceSummary } from "../shared/types";
+import type {
+  Area,
+  Bounds,
+  BusinessStatus,
+  CitySuggestion,
+  CrawlRoute,
+  LatLng,
+  PlaceDetails,
+  PlaceSummary,
+} from "../shared/types";
+import { isCountryCode } from "../shared/countries";
 import { cached } from "./cache";
 import type { Env } from "./env";
 import { HttpError } from "./http";
@@ -131,10 +141,22 @@ function todayLine(p: GPlace): string | null {
   return lines[mondayFirst] ?? null;
 }
 
-export function searchPlaces(env: Env, query: string, near: LatLng | null): Promise<PlaceSummary[]> {
+export function searchPlaces(
+  env: Env,
+  query: string,
+  near: LatLng | null,
+  bias: Bounds | null = null,
+): Promise<PlaceSummary[]> {
   const q = query.trim();
   const nearKey = near ? `${near.lat.toFixed(3)},${near.lng.toFixed(3)}` : "";
-  return cached(`search:${q.toLowerCase()}:${nearKey}`, SEARCH_TTL, async () => {
+  const biasKey = bias ? [bias.low.lat, bias.low.lng, bias.high.lat, bias.high.lng].map((n) => n.toFixed(2)).join(",") : "";
+  const rect = (b: Bounds) => ({
+    rectangle: {
+      low: { latitude: b.low.lat, longitude: b.low.lng },
+      high: { latitude: b.high.lat, longitude: b.high.lng },
+    },
+  });
+  return cached(`search:${q.toLowerCase()}:${nearKey}:${biasKey}`, SEARCH_TTL, async () => {
     let data: { places?: GPlace[] };
     if (q) {
       // No type bias here: biasing towards "bar" pushes breweries and taprooms
@@ -142,9 +164,13 @@ export function searchPlaces(env: Env, query: string, near: LatLng | null): Prom
       data = await google(env, `${PLACES}/places:searchText`, SEARCH_FIELDS, {
         textQuery: q,
         pageSize: 20,
+        // Prefer results near the user if we know where they are, otherwise in the
+        // crawl's town/country.
         ...(near
           ? { locationBias: { circle: { center: { latitude: near.lat, longitude: near.lng }, radius: 5000 } } }
-          : {}),
+          : bias
+            ? { locationBias: rect(bias) }
+            : {}),
       });
     } else if (near) {
       data = await google(env, `${PLACES}/places:searchNearby`, SEARCH_FIELDS, {
@@ -233,4 +259,117 @@ export function walkingRoute(env: Env, stops: { id: number; placeId: string }[])
     ...r,
     legs: r.legs.map((leg, i) => ({ ...leg, fromStopId: stops[i].id, toStopId: stops[i + 1].id })),
   }));
+}
+
+// ---------- areas (country / town or city) ----------
+
+const AREA_TTL = 300;
+const COUNTRY_ID_TTL = 86_400; // a country's Place ID; Place IDs may be stored indefinitely
+const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
+
+/** English name for an ISO country code, or null if it isn't a real region. */
+export function countryName(code: unknown): string | null {
+  if (!isCountryCode(code)) return null;
+  try {
+    const name = regionNames.of(code);
+    return name && name !== code ? name : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Town/city suggestions within one country (Places Autocomplete). */
+export function suggestCities(
+  env: Env,
+  input: string,
+  countryCode: string,
+  sessionToken: string | null,
+): Promise<CitySuggestion[]> {
+  const q = input.trim();
+  if (q.length < 2) return Promise.resolve([]);
+  if (!countryName(countryCode)) throw new HttpError(400, "Unknown country");
+  return cached(`cities:${countryCode}:${q.toLowerCase()}`, SEARCH_TTL, async () => {
+    const data = await google<{
+      suggestions?: {
+        placePrediction?: {
+          placeId: string;
+          structuredFormat?: { mainText?: { text: string }; secondaryText?: { text: string } };
+          text?: { text: string };
+        };
+      }[];
+    }>(
+      env,
+      `${PLACES}/places:autocomplete`,
+      "suggestions.placePrediction.placeId,suggestions.placePrediction.structuredFormat,suggestions.placePrediction.text",
+      {
+        input: q,
+        includedPrimaryTypes: ["(cities)"],
+        includedRegionCodes: [countryCode.toLowerCase()],
+        languageCode: "en",
+        ...(sessionToken ? { sessionToken } : {}),
+      },
+    );
+    return (data.suggestions ?? []).flatMap((s) => {
+      const p = s.placePrediction;
+      if (!p) return [];
+      return [
+        {
+          placeId: p.placeId,
+          name: p.structuredFormat?.mainText?.text ?? p.text?.text ?? "",
+          detail: p.structuredFormat?.secondaryText?.text ?? null,
+        },
+      ];
+    });
+  });
+}
+
+/** The Place ID of a country, looked up by its English name. */
+export function countryPlaceId(env: Env, countryCode: string): Promise<string | null> {
+  const name = countryName(countryCode);
+  if (!name) return Promise.resolve(null);
+  return cached(`country:${countryCode}`, COUNTRY_ID_TTL, async () => {
+    const data = await google<{ suggestions?: { placePrediction?: { placeId: string } }[] }>(
+      env,
+      `${PLACES}/places:autocomplete`,
+      "suggestions.placePrediction.placeId",
+      { input: name, includedPrimaryTypes: ["country"], includedRegionCodes: [countryCode.toLowerCase()] },
+    );
+    return data.suggestions?.[0]?.placePrediction?.placeId ?? null;
+  });
+}
+
+interface GArea {
+  id: string;
+  formattedAddress?: string;
+  location?: { latitude: number; longitude: number };
+  viewport?: { low: { latitude: number; longitude: number }; high: { latitude: number; longitude: number } };
+  types?: string[];
+  addressComponents?: { shortText: string; types: string[] }[];
+}
+
+/** Location, map bounds and name of an area (Place Details, Essentials fields only). */
+export function getArea(
+  env: Env,
+  placeId: string,
+  sessionToken: string | null = null,
+): Promise<Area & { countryCode: string | null }> {
+  if (!isPlaceId(placeId)) throw new HttpError(400, "Invalid place id");
+  return cached(`area:${placeId}`, AREA_TTL, async () => {
+    const qs = sessionToken ? `?sessionToken=${encodeURIComponent(sessionToken)}&languageCode=en` : "?languageCode=en";
+    const p = await google<GArea>(
+      env,
+      `${PLACES}/places/${encodeURIComponent(placeId)}${qs}`,
+      "id,formattedAddress,location,viewport,types,addressComponents",
+    );
+    if (!p.location) throw new HttpError(422, "That place has no location");
+    const ll = (v: { latitude: number; longitude: number }) => ({ lat: v.latitude, lng: v.longitude });
+    return {
+      placeId: p.id,
+      name: p.formattedAddress ?? "",
+      center: ll(p.location),
+      viewport: p.viewport ? { low: ll(p.viewport.low), high: ll(p.viewport.high) } : null,
+      isCountry: Boolean(p.types?.includes("country")),
+      countryCode: p.addressComponents?.find((c) => c.types.includes("country"))?.shortText ?? null,
+    };
+  });
 }

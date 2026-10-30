@@ -37,6 +37,29 @@ export interface PlaceDetails extends PlaceSummary {
   photo: PhotoRef | null;
 }
 
+export interface Bounds {
+  low: LatLng; // south-west
+  high: LatLng; // north-east
+}
+
+/** The town/city (or country) a crawl is in, resolved live from Places. */
+export interface Area {
+  placeId: string;
+  /** e.g. "Leeds, UK" or "United Kingdom" */
+  name: string;
+  center: LatLng;
+  viewport: Bounds | null;
+  /** True for a whole country (no town/city picked). */
+  isCountry: boolean;
+}
+
+/** A town/city suggestion while typing. */
+export interface CitySuggestion {
+  placeId: string;
+  name: string;
+  detail: string | null;
+}
+
 export interface Stop {
   id: number;
   placeId: string;
@@ -72,6 +95,9 @@ export interface Crawl {
   isOwner: boolean;
   /** True when the request's X-Edit-Token is this crawl's edit token. */
   hasValidToken: boolean;
+  /** ISO country code chosen when the crawl was created (null for older crawls). */
+  countryCode: string | null;
+  area: Area | null;
 }
 
 export interface CreatedCrawl {

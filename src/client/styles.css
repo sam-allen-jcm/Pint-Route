@@ -931,3 +931,98 @@ textarea:focus {
 .error-hint {
   color: var(--red);
 }
+
+/* ---------- new crawl: country + town ---------- */
+
+.select {
+  width: 100%;
+  padding: 12px 40px 12px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background-color: var(--surface);
+  font-size: 16px;
+  font-weight: 400;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--brass) 50%),
+    linear-gradient(135deg, var(--brass) 50%, transparent 50%);
+  background-position:
+    calc(100% - 20px) 52%,
+    calc(100% - 14px) 52%;
+  background-size: 6px 6px;
+  background-repeat: no-repeat;
+}
+.select:focus {
+  outline: none;
+  border-color: var(--brass);
+  box-shadow: 0 0 0 3px rgb(200 144 47 / 0.25);
+}
+.optional {
+  font-weight: 400;
+  color: var(--muted);
+}
+.city-picker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 400;
+}
+.city-input-row {
+  position: relative;
+}
+.city-input-row input {
+  padding-right: 42px;
+}
+.clear-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+.city-list {
+  position: absolute;
+  top: 52px;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  background: var(--surface);
+  border: 1.5px solid var(--brass);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  max-height: 280px;
+  overflow-y: auto;
+}
+.city-list li[role="option"] {
+  padding: 10px 14px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+}
+.city-list li.active,
+.city-list li[role="option"]:hover {
+  background: var(--surface-2);
+}
+.city-name {
+  font-weight: 600;
+}
+.city-detail {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.city-attribution {
+  padding: 4px 14px 2px;
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-align: right;
+}

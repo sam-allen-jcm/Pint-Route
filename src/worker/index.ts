@@ -1,4 +1,4 @@
-import { MAX_STOPS, type LatLng } from "../shared/types";
+import { MAX_STOPS, type Bounds, type LatLng } from "../shared/types";
 import { forgotPassword, login, logout, me, register, requireUser, resetPassword } from "./auth";
 import {
   addStop,
@@ -14,7 +14,7 @@ import {
   updateStop,
 } from "./crawls";
 import type { Env } from "./env";
-import { getPhotoUri, getPlace, isPlaceId, searchPlaces, walkingRoute } from "./google";
+import { getPhotoUri, getPlace, isPlaceId, searchPlaces, suggestCities, walkingRoute } from "./google";
 import { HttpError, json, readJson } from "./http";
 
 const SLUG = "([a-z0-9]{6,32})";
@@ -30,6 +30,18 @@ function parseNear(url: URL): LatLng | null {
   return near;
 }
 
+/** "south,west,north,east" → Bounds */
+function parseBounds(param: string | null): Bounds | null {
+  if (!param) return null;
+  const n = param.split(",").map(Number);
+  const [s, w, no, e] = n;
+  if (n.length !== 4 || !n.every(Number.isFinite) || Math.abs(s) > 90 || Math.abs(no) > 90 || s > no) {
+    throw new HttpError(400, "Invalid bias");
+  }
+  if (Math.abs(w) > 180 || Math.abs(e) > 180) throw new HttpError(400, "Invalid bias");
+  return { low: { lat: s, lng: w }, high: { lat: no, lng: e } };
+}
+
 async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url: URL): Promise<Response> {
   const path = url.pathname.replace(/\/+$/, "");
   const method = request.method;
@@ -38,7 +50,14 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
   // ---- Places (live from Google, short-lived cache) ----
   if (path === "/api/places/search" && method === "GET") {
     const q = (url.searchParams.get("q") ?? "").slice(0, 120);
-    return json({ places: await searchPlaces(env, q, parseNear(url)) });
+    return json({ places: await searchPlaces(env, q, parseNear(url), parseBounds(url.searchParams.get("bias"))) });
+  }
+  if (path === "/api/places/cities" && method === "GET") {
+    const q = (url.searchParams.get("q") ?? "").slice(0, 80);
+    const country = (url.searchParams.get("country") ?? "").toUpperCase();
+    const session = url.searchParams.get("session");
+    const sessionToken = session && /^[A-Za-z0-9_-]{8,64}$/.test(session) ? session : null;
+    return json({ cities: await suggestCities(env, q, country, sessionToken) });
   }
   if (path === "/api/places/photo" && method === "GET") {
     const uri = await getPhotoUri(env, url.searchParams.get("name") ?? "", Number(url.searchParams.get("w") ?? 400));

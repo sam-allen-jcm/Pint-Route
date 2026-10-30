@@ -1,6 +1,6 @@
-import { MAX_STOPS, type Crawl, type CrawlSummary, type CreatedCrawl, type Stop } from "../shared/types";
+import { MAX_STOPS, type Area, type Crawl, type CrawlSummary, type CreatedCrawl, type Stop } from "../shared/types";
 import type { Env } from "./env";
-import { getPlace, isPlaceId } from "./google";
+import { countryName, countryPlaceId, getArea, getPlace, isPlaceId } from "./google";
 import { getUser } from "./auth";
 import { randomToken, sha256 } from "./crypto";
 import { HttpError } from "./http";
@@ -11,6 +11,8 @@ interface CrawlRow {
   name: string;
   edit_token_hash: string;
   owner_id: number | null;
+  country_code: string | null;
+  area_place_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -88,16 +90,50 @@ function touch(env: Env, crawlId: number) {
   );
 }
 
-export async function createCrawl(request: Request, env: Env, body: { name?: unknown }): Promise<CreatedCrawl> {
+/**
+ * Works out the area to store for a new crawl: the chosen town/city (checked to
+ * be in the chosen country), or else the country itself.
+ */
+async function resolveArea(
+  env: Env,
+  body: { countryCode?: unknown; cityPlaceId?: unknown; sessionToken?: unknown },
+): Promise<{ countryCode: string | null; areaPlaceId: string | null }> {
+  if (body.countryCode === undefined || body.countryCode === null) return { countryCode: null, areaPlaceId: null };
+  const countryCode = typeof body.countryCode === "string" ? body.countryCode.toUpperCase() : "";
+  if (!countryName(countryCode)) throw new HttpError(400, "Choose a country");
+
+  const sessionToken =
+    typeof body.sessionToken === "string" && /^[A-Za-z0-9_-]{8,64}$/.test(body.sessionToken) ? body.sessionToken : null;
+  if (body.cityPlaceId) {
+    if (!isPlaceId(body.cityPlaceId)) throw new HttpError(400, "Invalid town or city");
+    const area = await getArea(env, body.cityPlaceId, sessionToken);
+    if (area.countryCode && area.countryCode !== countryCode) {
+      throw new HttpError(400, "That town or city isn't in the chosen country");
+    }
+    return { countryCode, areaPlaceId: area.placeId };
+  }
+  // Country only. If Google is unavailable, still create the crawl (no area).
+  const areaPlaceId = await countryPlaceId(env, countryCode).catch(() => null);
+  return { countryCode, areaPlaceId };
+}
+
+export async function createCrawl(
+  request: Request,
+  env: Env,
+  body: { name?: unknown; countryCode?: unknown; cityPlaceId?: unknown; sessionToken?: unknown },
+): Promise<CreatedCrawl> {
   const name = cleanName(body.name);
+  const { countryCode, areaPlaceId } = await resolveArea(env, body);
   const user = await getUser(request, env);
   const editToken = randomToken();
   const hash = await sha256(editToken);
   for (let attempt = 0; attempt < 5; attempt++) {
     const slug = randomSlug();
     try {
-      await env.DB.prepare("INSERT INTO crawls (slug, name, edit_token_hash, owner_id) VALUES (?, ?, ?, ?)")
-        .bind(slug, name, hash, user?.id ?? null)
+      await env.DB.prepare(
+        "INSERT INTO crawls (slug, name, edit_token_hash, owner_id, country_code, area_place_id) VALUES (?, ?, ?, ?, ?, ?)",
+      )
+        .bind(slug, name, hash, user?.id ?? null, countryCode, areaPlaceId)
         .run();
       return { slug, editToken };
     } catch (err) {
@@ -118,7 +154,21 @@ export async function getCrawl(request: Request, env: Env, slug: string): Promis
     canEdit: await hasEditAccess(request, env, crawl),
     isOwner: await isOwner(request, env, crawl),
     hasValidToken: await tokenMatches(request, crawl),
+    countryCode: crawl.country_code,
+    area: await loadArea(env, crawl.area_place_id),
   };
+}
+
+/** Live details of a crawl's area; a Google hiccup just means no area. */
+async function loadArea(env: Env, placeId: string | null): Promise<Area | null> {
+  if (!placeId) return null;
+  try {
+    const { countryCode: _, ...area } = await getArea(env, placeId);
+    return area;
+  } catch (err) {
+    console.error("Could not load crawl area", placeId, err);
+    return null;
+  }
 }
 
 /** The logged-in user's crawls, most recently changed first. */

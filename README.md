@@ -113,7 +113,8 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 
 ### Data & Google terms
 
-- D1 stores **only Place IDs** plus our own data: crawl name, stop order, visited date and notes.
+- D1 stores **only Place IDs** plus our own data: crawl name, stop order, visited date and notes,
+  and each crawl's country code and **area** (the Place ID of its town/city, or of the country).
   See [`migrations/0001_init.sql`](migrations/0001_init.sql).
 - Names, addresses, opening hours, business status and photos are fetched **live** from
   Places via the Worker. They're cached only briefly (5 min for details and search, 10 min
@@ -124,6 +125,16 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
   Routes asks only for leg distance, duration and polyline.
 - Photos are proxied through `/api/places/photo`, which redirects to Google's short-lived
   photo URL, so the server key is never exposed. Author attributions are shown with each photo.
+
+### Where a crawl is
+
+- New crawls pick a **country** (defaulting to the last one used on that device, else the
+  phone's region) and an optional **town or city**, suggested by Places Autocomplete limited to
+  that country (`(cities)` types, with a session token so typing plus the final lookup bill as
+  one session). The Worker checks the town is in the chosen country.
+- Without a town, the country's own Place ID is looked up and stored instead.
+- The area's location and bounds are fetched live (Essentials fields, cached 5 minutes). A crawl
+  with no stops opens with the map framed on it, and text searches prefer results there.
 
 ### Closed pubs
 
@@ -174,9 +185,10 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 
 | Method & path | Auth | Purpose |
 | --- | --- | --- |
-| `GET /api/places/search?q=&lat=&lng=` | – | Text Search (`q`, location-biased if `lat`/`lng` given; results filtered to drinking spots) or Nearby Search (`lat`/`lng` only: pubs, bars, breweries/taprooms, brewpubs, beer gardens, gastropubs, Irish pubs) |
+| `GET /api/places/search?q=&lat=&lng=&bias=` | – | Text Search (`q`, location-biased by `lat`/`lng`, else by `bias` = `south,west,north,east`; results filtered to drinking spots) or Nearby Search (`lat`/`lng` only: pubs, bars, breweries/taprooms, brewpubs, beer gardens, gastropubs, Irish pubs) |
 | `GET /api/places?ids=a,b,c` | – | Live details for stops |
 | `GET /api/places/photo?name=&w=` | – | Redirect to a place photo |
+| `GET /api/places/cities?q=&country=GB&session=` | – | Town/city suggestions within a country |
 | `POST /api/auth/register` | – | `{ name, email, password }` → creates account, sets session cookie |
 | `POST /api/auth/login` | – | `{ email, password }` → sets session cookie |
 | `POST /api/auth/logout` | session | Ends the session |
@@ -185,7 +197,7 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 | `POST /api/auth/reset` | – | `{ token, password }` → sets the new password, ends other sessions, logs in |
 | `GET /api/me/crawls` | session | The user's crawls, newest first |
 | `POST /api/me/claim` | session | `{ crawls: [{ slug, editToken }] }` → moves guest crawls into the account |
-| `POST /api/crawls` | – | Create crawl → `{ slug, editToken }` (owned by the user if logged in) |
+| `POST /api/crawls` | – | `{ name, countryCode?, cityPlaceId?, sessionToken? }` → `{ slug, editToken }` (owned by the user if logged in) |
 | `GET /api/crawls/:slug` | optional | Crawl + stops (`canEdit` from the token or ownership, `isOwner`) |
 | `PATCH /api/crawls/:slug` | edit | Rename `{ name }` |
 | `DELETE /api/crawls/:slug` | edit | Delete crawl |
