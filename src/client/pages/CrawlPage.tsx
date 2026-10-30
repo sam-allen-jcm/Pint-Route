@@ -442,10 +442,13 @@ export function CrawlPage() {
             </div>
           </div>
           {wide && <HeaderNav current={tab} items={sections} onSelect={setTab} />}
-          <button className="btn btn-small btn-share" onClick={() => setSharing(true)}>
-            Share
-          </button>
-          {!wide && <BurgerMenu current={tab} items={sections} onSelect={setTab} />}
+          {wide ? (
+            <button className="btn btn-small btn-share" onClick={() => setSharing(true)}>
+              Share
+            </button>
+          ) : (
+            <BurgerMenu current={tab} items={sections} onSelect={setTab} onShare={() => setSharing(true)} />
+          )}
         </header>
       </div>
 

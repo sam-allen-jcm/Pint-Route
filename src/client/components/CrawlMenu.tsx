@@ -35,8 +35,8 @@ export function HeaderNav({ current, items, onSelect }: Props) {
   );
 }
 
-/** Mobile: a ☰ button with a drop-down of the same sections. */
-export function BurgerMenu({ current, items, onSelect }: Props) {
+/** Mobile: a ☰ button with a drop-down of the same sections, plus Share. */
+export function BurgerMenu({ current, items, onSelect, onShare }: Props & { onShare: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -88,6 +88,20 @@ export function BurgerMenu({ current, items, onSelect }: Props) {
               {current === item.id && <span className="burger-here">Viewing</span>}
             </button>
           ))}
+          <button
+            type="button"
+            role="menuitem"
+            className="burger-item burger-share"
+            onClick={() => {
+              setOpen(false);
+              onShare();
+            }}
+          >
+            <span className="burger-icon" aria-hidden>
+              🔗
+            </span>
+            Share
+          </button>
           <Link to="/" role="menuitem" className="burger-item burger-home" onClick={() => setOpen(false)}>
             <span className="burger-icon" aria-hidden>
               🏠

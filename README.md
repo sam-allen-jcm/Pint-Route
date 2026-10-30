@@ -145,7 +145,7 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 
 - **Stops** tab: the crawl as you walk it: meeting point, each pub with "Tick off" (editors) and
   notes (shown to all; only logged-in editors can add or edit them, enforced by the API).
-- Sections are switched from the pinned header: on desktop, **Stops** / **Edit crawl** buttons next to Share (the map is always shown beside the list); on phones, a **☰ menu** with Stops, Map, Edit crawl and My crawls. Nothing is fixed to the bottom of the screen, which is left free for the cookie-settings button.
+- Sections are switched from the pinned header: on desktop, **Stops** / **Edit crawl** buttons next to Share (the map is always shown beside the list); on phones, a **☰ menu** with Stops, Map, Edit crawl, Share and My crawls. Nothing is fixed to the bottom of the screen, which is left free for the cookie-settings button.
 - **Map** tab (phones; always visible beside the list on wide screens): stops, route, meeting point,
   and **Show my location**, a live blue dot with an accuracy circle that follows you as you walk
   while the page is open. The position stays in the browser.
