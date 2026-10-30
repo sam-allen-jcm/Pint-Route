@@ -21,7 +21,9 @@
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --radius: 14px;
-  --tabbar-h: 64px;
+  --tabbar-h: 50px;
+  /* Pinned header + tabs on the crawl page. */
+  --top-h: 128px;
 
   color-scheme: light;
 }
@@ -339,20 +341,21 @@ textarea:focus {
 
 .crawl-page {
   min-height: 100vh;
-  padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
 }
 
-.topbar {
+.top-sticky {
   position: sticky;
   top: 0;
   z-index: 20;
+}
+.topbar {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
   background: linear-gradient(180deg, var(--wood-2), var(--wood));
   color: #f6ead2;
-  border-bottom: 3px solid var(--brass);
 }
 .brand {
   font-size: 1.6rem;
@@ -422,8 +425,8 @@ textarea:focus {
 }
 .crawl-map {
   position: sticky;
-  top: 90px;
-  height: calc(100vh - 110px - var(--tabbar-h));
+  top: calc(var(--top-h) + 14px);
+  height: calc(100vh - var(--top-h) - 40px);
 }
 
 /* stops */
@@ -681,7 +684,8 @@ textarea:focus {
 /* map */
 
 .map-tab {
-  height: calc(100vh - 170px - var(--tabbar-h));
+  /* Leaves room at the bottom for the cookie-settings button. */
+  height: calc(100dvh - var(--top-h) - 76px);
   min-height: 320px;
 }
 .map-wrap {
@@ -753,36 +757,33 @@ textarea:focus {
 /* tab bar */
 
 .tabbar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 30;
   display: flex;
-  height: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
-  padding-bottom: env(safe-area-inset-bottom);
+  height: var(--tabbar-h);
   background: var(--wood);
-  border-top: 3px solid var(--brass);
+  border-top: 1px solid rgb(255 255 255 / 0.08);
+  border-bottom: 3px solid var(--brass);
 }
 .tab {
   flex: 1;
   border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -3px; /* active underline sits on the brass rule */
   background: transparent;
   color: #d9c6a6;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  font-size: 0.78rem;
+  gap: 6px;
+  font-size: 0.9rem;
   font-weight: 700;
   cursor: pointer;
 }
 .tab-icon {
-  font-size: 1.25rem;
+  font-size: 1.05rem;
 }
 .tab-active {
   color: var(--amber);
+  border-bottom-color: var(--amber);
   background: rgb(255 255 255 / 0.06);
 }
 

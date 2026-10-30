@@ -66,6 +66,7 @@ export function CrawlPage() {
 
   const setTab = (t: Tab) => {
     if (t === "map" && tab !== "map") api.trackEvent("map_viewed");
+    if (t !== tab) window.scrollTo(0, 0); // start each tab at the top, below the pinned header
     setParams(t === "stops" ? {} : { tab: t }, { replace: true });
   };
 
@@ -386,53 +387,61 @@ export function CrawlPage() {
 
   return (
     <div className="crawl-page">
-      <header className="topbar">
-        <Link to="/" className="brand" aria-label="Pint Route home">
-          🍺
-        </Link>
-        <div className="topbar-title">
-          {renaming ? (
-            <form onSubmit={rename}>
-              <input
-                className="title-input"
-                value={nameDraft}
-                maxLength={80}
-                autoFocus
-                onChange={(e) => setNameDraft(e.target.value)}
-                onBlur={rename}
-                aria-label="Crawl name"
-              />
-            </form>
-          ) : (
-            <h1
-              className={canEdit ? "editable" : ""}
-              onClick={() => {
-                if (!canEdit) return;
-                setNameDraft(crawl.name);
-                setRenaming(true);
-              }}
-              title={canEdit ? "Tap to rename" : undefined}
-            >
-              {crawl.name}
-            </h1>
-          )}
-          <div className="topbar-sub">
-            {canEdit ? (
-              <button className="area-chip" onClick={() => setEditingArea(true)} title="Change town">
-                📍 {crawl.area ? (crawl.area.isCountry ? crawl.area.name : crawl.area.name.split(",")[0]) : "Set town"} ✎
-              </button>
+      {/* Header and tabs stay pinned to the top (the bottom is left free for the cookie button). */}
+      <div className="top-sticky">
+        <header className="topbar">
+          <Link to="/" className="brand" aria-label="Pint Route home">
+            🍺
+          </Link>
+          <div className="topbar-title">
+            {renaming ? (
+              <form onSubmit={rename}>
+                <input
+                  className="title-input"
+                  value={nameDraft}
+                  maxLength={80}
+                  autoFocus
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  onBlur={rename}
+                  aria-label="Crawl name"
+                />
+              </form>
             ) : (
-              crawl.area && !crawl.area.isCountry && `${crawl.area.name.split(",")[0]} · `
+              <h1
+                className={canEdit ? "editable" : ""}
+                onClick={() => {
+                  if (!canEdit) return;
+                  setNameDraft(crawl.name);
+                  setRenaming(true);
+                }}
+                title={canEdit ? "Tap to rename" : undefined}
+              >
+                {crawl.name}
+              </h1>
             )}
-            {stops.length} {stops.length === 1 ? "stop" : "stops"}
-            {stops.length > 0 && ` · ${visitedCount} visited`}
-            {routeFresh && shownRoute && ` · ${formatDuration(shownRoute.durationSeconds)} walk`}
+            <div className="topbar-sub">
+              {canEdit ? (
+                <button className="area-chip" onClick={() => setEditingArea(true)} title="Change town">
+                  📍 {crawl.area ? (crawl.area.isCountry ? crawl.area.name : crawl.area.name.split(",")[0]) : "Set town"} ✎
+                </button>
+              ) : (
+                crawl.area && !crawl.area.isCountry && `${crawl.area.name.split(",")[0]} · `
+              )}
+              {stops.length} {stops.length === 1 ? "stop" : "stops"}
+              {stops.length > 0 && ` · ${visitedCount} visited`}
+              {routeFresh && shownRoute && ` · ${formatDuration(shownRoute.durationSeconds)} walk`}
+            </div>
           </div>
-        </div>
-        <button className="btn btn-small btn-share" onClick={() => setSharing(true)}>
-          Share
-        </button>
-      </header>
+          <button className="btn btn-small btn-share" onClick={() => setSharing(true)}>
+            Share
+          </button>
+        </header>
+        <nav className="tabbar" aria-label="Crawl sections">
+          <TabButton active={tab === "stops"} onClick={() => setTab("stops")} icon="📋" label="Stops" />
+          {!wide && <TabButton active={tab === "map"} onClick={() => setTab("map")} icon="🗺️" label="Map" />}
+          {canEdit && <TabButton active={tab === "edit"} onClick={() => setTab("edit")} icon="✏️" label="Edit crawl" />}
+        </nav>
+      </div>
 
       {stops.length > 0 && (
         <div className="progress" aria-label={`${visitedCount} of ${stops.length} visited`}>
@@ -470,11 +479,6 @@ export function CrawlPage() {
         {wide && <aside className="crawl-map">{map}</aside>}
       </div>
 
-      <nav className="tabbar" aria-label="Crawl sections">
-        <TabButton active={tab === "stops"} onClick={() => setTab("stops")} icon="📋" label="Stops" />
-        {!wide && <TabButton active={tab === "map"} onClick={() => setTab("map")} icon="🗺️" label="Map" />}
-        {canEdit && <TabButton active={tab === "edit"} onClick={() => setTab("edit")} icon="✏️" label="Edit crawl" />}
-      </nav>
 
       {editingMeeting && (
         <MeetingPointSheet

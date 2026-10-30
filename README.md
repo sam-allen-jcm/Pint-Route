@@ -145,6 +145,7 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 
 - **Stops** tab: the crawl as you walk it: meeting point, each pub with "Tick off" (editors) and
   notes (shown to all; only logged-in editors can add or edit them, enforced by the API).
+- Tabs sit under the crawl header and stay pinned to the top (the bottom of the screen is left free for the cookie-settings button).
 - **Map** tab (phones; always visible beside the list on wide screens): stops, route, meeting point,
   and **Show my location**, a live blue dot with an accuracy circle that follows you as you walk
   while the page is open. The position stays in the browser.
