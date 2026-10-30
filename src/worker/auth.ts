@@ -214,7 +214,9 @@ export async function forgotPassword(
   const email = cleanEmail(body.email);
   await rateLimit(request, env, "forgot", email);
 
-  const origin = new URL(request.url).origin;
+  // Links always use the public domain (APP_URL), even if the request came in
+  // on the workers.dev address: mail linking to another domain looks like phishing.
+  const origin = env.APP_URL?.replace(/\/+$/, "") || new URL(request.url).origin;
   ctx.waitUntil(
     (async () => {
       const user = await env.DB.prepare("SELECT id, email, display_name FROM users WHERE email = ?")

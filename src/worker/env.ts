@@ -8,6 +8,8 @@ export interface Env {
   AUTH_IP_LIMITER?: RateLimit;
   /** Secret: Resend API key for outgoing email. */
   RESEND_API_KEY?: string;
+  /** Public address of the app, used in emailed links, e.g. "https://pintroute.com". */
+  APP_URL?: string;
   /** Sender for outgoing email, e.g. "Pint Route <noreply@pintroute.com>". */
   EMAIL_FROM?: string;
   /** Local development only: "true" prints unsent emails to the console. */

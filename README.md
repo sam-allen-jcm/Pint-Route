@@ -49,7 +49,8 @@ Password-reset emails are sent with [Resend](https://resend.com) from `noreply@p
 3. **API Keys → Create API key** with *Sending access*, restricted to `pintroute.com`.
 4. Add it to the Worker as the `RESEND_API_KEY` secret (see the table below).
 
-The sender address is the `EMAIL_FROM` variable in `wrangler.jsonc`. Until the key is set,
+The sender address is the `EMAIL_FROM` variable in `wrangler.jsonc`, and links in emails use
+`APP_URL` (`https://pintroute.com`), whichever address the request came in on. Until the key is set,
 reset requests still succeed for the user, but no email is sent and the Worker logs an error.
 
 ---

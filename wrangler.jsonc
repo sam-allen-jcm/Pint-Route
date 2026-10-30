@@ -5,8 +5,10 @@
   "compatibility_date": "2026-09-01",
   "observability": { "enabled": true },
 
-  // Sender for password-reset emails. The domain must be verified in Resend.
   "vars": {
+    // Public address used in emailed links (password reset).
+    "APP_URL": "https://pintroute.com",
+    // Sender for emails. The domain must be verified in Resend.
     "EMAIL_FROM": "Pint Route <noreply@pintroute.com>"
   },
 
