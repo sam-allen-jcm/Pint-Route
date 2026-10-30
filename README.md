@@ -163,6 +163,14 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
   (`src/shared/hours.ts`). It uses the dated hours for the next 7 days, which include holidays, and the
   regular weekly hours further ahead.
 
+### Branding on shared crawls
+
+- The crawl header shows a "🍺 Pint Route" wordmark on desktop and a small "PINT ROUTE" label above
+  the crawl name on phones. Its contents line up with the page content (same max width as the
+  list + map). The browser tab reads "<crawl name> · Pint Route".
+- Link previews (WhatsApp, iMessage, Slack…) use Open Graph tags in `index.html` and
+  `public/og-image.png` (1200×630).
+
 ### Meeting point
 
 - A crawl can have an optional **meeting point** before stop 1. It can be any place (a market,

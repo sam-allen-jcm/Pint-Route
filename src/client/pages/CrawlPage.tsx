@@ -71,6 +71,16 @@ export function CrawlPage() {
     setParams(t === "stops" ? {} : { tab: t }, { replace: true });
   };
 
+  // Browser tab / bookmarks: "Steve's Birthday · Pint Route"
+  const crawlName = crawl?.name;
+  useEffect(() => {
+    if (!crawlName) return;
+    document.title = `${crawlName} · Pint Route`;
+    return () => {
+      document.title = "Pint Route";
+    };
+  }, [crawlName]);
+
   // ---- Load the crawl (and accept a private edit link if present) ----
   const loadSeq = useRef(0);
   const load = useCallback(async () => {
@@ -399,56 +409,62 @@ export function CrawlPage() {
       {/* The header (with section buttons / menu) stays pinned to the top; the bottom is left free for the cookie button. */}
       <div className="top-sticky">
         <header className="topbar">
-          <Link to="/" className="brand" aria-label="Pint Route home">
-            🍺
-          </Link>
-          <div className="topbar-title">
-            {renaming ? (
-              <form onSubmit={rename}>
-                <input
-                  className="title-input"
-                  value={nameDraft}
-                  maxLength={80}
-                  autoFocus
-                  onChange={(e) => setNameDraft(e.target.value)}
-                  onBlur={rename}
-                  aria-label="Crawl name"
-                />
-              </form>
-            ) : (
-              <h1
-                className={canEdit ? "editable" : ""}
-                onClick={() => {
-                  if (!canEdit) return;
-                  setNameDraft(crawl.name);
-                  setRenaming(true);
-                }}
-                title={canEdit ? "Tap to rename" : undefined}
-              >
-                {crawl.name}
-              </h1>
-            )}
-            <div className="topbar-sub">
-              {canEdit ? (
-                <button className="area-chip" onClick={() => setEditingArea(true)} title="Change town">
-                  📍 {crawl.area ? (crawl.area.isCountry ? crawl.area.name : crawl.area.name.split(",")[0]) : "Set town"} ✎
-                </button>
+          <div className={`topbar-inner ${wide ? "wide" : ""}`}>
+            <Link to="/" className="brand" aria-label="Pint Route home">
+              <span className="brand-mug" aria-hidden>
+                🍺
+              </span>
+              {wide && <span className="brand-name">Pint Route</span>}
+            </Link>
+            <div className="topbar-title">
+              {!wide && <div className="topbar-eyebrow">Pint Route</div>}
+              {renaming ? (
+                <form onSubmit={rename}>
+                  <input
+                    className="title-input"
+                    value={nameDraft}
+                    maxLength={80}
+                    autoFocus
+                    onChange={(e) => setNameDraft(e.target.value)}
+                    onBlur={rename}
+                    aria-label="Crawl name"
+                  />
+                </form>
               ) : (
-                crawl.area && !crawl.area.isCountry && `${crawl.area.name.split(",")[0]} · `
+                <h1
+                  className={canEdit ? "editable" : ""}
+                  onClick={() => {
+                    if (!canEdit) return;
+                    setNameDraft(crawl.name);
+                    setRenaming(true);
+                  }}
+                  title={canEdit ? "Tap to rename" : undefined}
+                >
+                  {crawl.name}
+                </h1>
               )}
-              {stops.length} {stops.length === 1 ? "stop" : "stops"}
-              {stops.length > 0 && ` · ${visitedCount} visited`}
-              {routeFresh && shownRoute && ` · ${formatDuration(shownRoute.durationSeconds)} walk`}
+              <div className="topbar-sub">
+                {canEdit ? (
+                  <button className="area-chip" onClick={() => setEditingArea(true)} title="Change town">
+                    📍 {crawl.area ? (crawl.area.isCountry ? crawl.area.name : crawl.area.name.split(",")[0]) : "Set town"} ✎
+                  </button>
+                ) : (
+                  crawl.area && !crawl.area.isCountry && `${crawl.area.name.split(",")[0]} · `
+                )}
+                {stops.length} {stops.length === 1 ? "stop" : "stops"}
+                {stops.length > 0 && ` · ${visitedCount} visited`}
+                {routeFresh && shownRoute && ` · ${formatDuration(shownRoute.durationSeconds)} walk`}
+              </div>
             </div>
+            {wide && <HeaderNav current={tab} items={sections} onSelect={setTab} />}
+            {wide ? (
+              <button className="btn btn-small btn-share" onClick={() => setSharing(true)}>
+                Share
+              </button>
+            ) : (
+              <BurgerMenu current={tab} items={sections} onSelect={setTab} onShare={() => setSharing(true)} />
+            )}
           </div>
-          {wide && <HeaderNav current={tab} items={sections} onSelect={setTab} />}
-          {wide ? (
-            <button className="btn btn-small btn-share" onClick={() => setSharing(true)}>
-              Share
-            </button>
-          ) : (
-            <BurgerMenu current={tab} items={sections} onSelect={setTab} onShare={() => setSharing(true)} />
-          )}
         </header>
       </div>
 
@@ -458,20 +474,24 @@ export function CrawlPage() {
         </div>
       )}
 
-      {!canEdit && (
-        <div className="banner">
-          👀 You're viewing a shared crawl (read-only). <Link to="/">Plan your own</Link>
-          {user === null && (
-            <>
-              {" "}
-              or <Link to={`/login?next=${encodeURIComponent(`/c/${slug}`)}`}>log in</Link> if it's yours.
-            </>
+      {(!canEdit || actionError) && (
+        <div className={`crawl-notices ${wide ? "wide" : ""}`}>
+          {!canEdit && (
+            <div className="banner">
+              👀 You're viewing a shared crawl (read-only). <Link to="/">Plan your own on Pint Route</Link>
+              {user === null && (
+                <>
+                  {" "}
+                  or <Link to={`/login?next=${encodeURIComponent(`/c/${slug}`)}`}>log in</Link> if it's yours.
+                </>
+              )}
+            </div>
           )}
-        </div>
-      )}
-      {actionError && (
-        <div className="banner banner-error" role="alert">
-          {actionError}
+          {actionError && (
+            <div className="banner banner-error" role="alert">
+              {actionError}
+            </div>
+          )}
         </div>
       )}
 

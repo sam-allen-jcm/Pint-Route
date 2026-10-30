@@ -350,16 +350,50 @@ textarea:focus {
 }
 .topbar {
   border-bottom: 3px solid var(--brass);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
+  padding: calc(10px + env(safe-area-inset-top)) 0 10px;
   background: linear-gradient(180deg, var(--wood-2), var(--wood));
   color: #f6ead2;
 }
+/* Same width and side padding as .crawl-layout, so the header lines up with the content. */
+.topbar-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 14px;
+}
+.topbar-inner.wide {
+  max-width: 1280px;
+}
 .brand {
-  font-size: 1.6rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   text-decoration: none;
+  flex: none;
+}
+.brand-mug {
+  font-size: 1.6rem;
+}
+.brand-name {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 1.3rem;
+  color: var(--amber);
+  letter-spacing: 0.01em;
+  padding-right: 14px;
+  margin-right: 2px;
+  border-right: 1px solid rgb(255 255 255 / 0.2);
+  white-space: nowrap;
+}
+.topbar-eyebrow {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--amber);
+  line-height: 1.2;
 }
 .topbar-title {
   flex: 1;
@@ -398,8 +432,17 @@ textarea:focus {
   transition: width 0.4s ease;
 }
 
+/* Notices line up with the content below (same width as .crawl-layout). */
+.crawl-notices {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 14px;
+}
+.crawl-notices.wide {
+  max-width: 1280px;
+}
 .banner {
-  margin: 12px 14px 0;
+  margin: 12px 0 0;
   padding: 10px 14px;
   background: var(--surface-2);
   border: 1px solid var(--line);
