@@ -2,7 +2,8 @@
 
 Pub crawl planner at https://pintroute.com. React + Vite front end, Cloudflare Worker API
 (`src/worker`), D1 database (`migrations/`), deployed by Cloudflare Workers Builds from `main`.
-See README.md for setup, secrets and the API.
+See README.md for setup, secrets and the API, and **`docs/ROADMAP.md`** for planned work
+(phone apps, monetisation, backlog). Keep the roadmap current as items are built.
 
 ## Standing rule: keep the legal pages accurate
 
