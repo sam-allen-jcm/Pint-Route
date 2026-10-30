@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { MEETING_POINT_ID, type Crawl, type CrawlRoute, type PlaceDetails, type PlaceSummary, type RouteLeg, type Stop } from "../../shared/types";
 import { api, ApiError } from "../api";
 import { AreaSheet } from "../components/AreaSheet";
+import { BurgerMenu, HeaderNav } from "../components/CrawlMenu";
 import { EditStops } from "../components/EditStops";
 import { ScheduleEditor } from "../components/ScheduleEditor";
 import { finishTime, planArrivals } from "../schedule";
@@ -373,6 +374,14 @@ export function CrawlPage() {
     </div>
   );
 
+  // Sections for the header buttons (desktop) or ☰ menu (mobile). On wide
+  // screens the map is always shown beside the list, so it isn't a section.
+  const sections = [
+    { id: "stops" as const, icon: "📋", label: "Stops" },
+    ...(wide ? [] : [{ id: "map" as const, icon: "🗺️", label: "Map" }]),
+    ...(canEdit ? [{ id: "edit" as const, icon: "✏️", label: "Edit crawl" }] : []),
+  ];
+
   const map = (
     <CrawlMap
       stops={stops}
@@ -387,7 +396,7 @@ export function CrawlPage() {
 
   return (
     <div className="crawl-page">
-      {/* Header and tabs stay pinned to the top (the bottom is left free for the cookie button). */}
+      {/* The header (with section buttons / menu) stays pinned to the top; the bottom is left free for the cookie button. */}
       <div className="top-sticky">
         <header className="topbar">
           <Link to="/" className="brand" aria-label="Pint Route home">
@@ -432,15 +441,12 @@ export function CrawlPage() {
               {routeFresh && shownRoute && ` · ${formatDuration(shownRoute.durationSeconds)} walk`}
             </div>
           </div>
+          {wide && <HeaderNav current={tab} items={sections} onSelect={setTab} />}
           <button className="btn btn-small btn-share" onClick={() => setSharing(true)}>
             Share
           </button>
+          {!wide && <BurgerMenu current={tab} items={sections} onSelect={setTab} />}
         </header>
-        <nav className="tabbar" aria-label="Crawl sections">
-          <TabButton active={tab === "stops"} onClick={() => setTab("stops")} icon="📋" label="Stops" />
-          {!wide && <TabButton active={tab === "map"} onClick={() => setTab("map")} icon="🗺️" label="Map" />}
-          {canEdit && <TabButton active={tab === "edit"} onClick={() => setTab("edit")} icon="✏️" label="Edit crawl" />}
-        </nav>
       </div>
 
       {stops.length > 0 && (
@@ -500,17 +506,6 @@ export function CrawlPage() {
         <ShareSheet name={crawl.name} slug={slug} editToken={canEdit ? editToken : null} onClose={() => setSharing(false)} />
       )}
     </div>
-  );
-}
-
-function TabButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: string; label: string }) {
-  return (
-    <button className={`tab ${active ? "tab-active" : ""}`} onClick={onClick} aria-current={active ? "page" : undefined}>
-      <span className="tab-icon" aria-hidden>
-        {icon}
-      </span>
-      {label}
-    </button>
   );
 }
 

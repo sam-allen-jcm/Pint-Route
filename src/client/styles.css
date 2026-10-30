@@ -21,9 +21,8 @@
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --radius: 14px;
-  --tabbar-h: 50px;
-  /* Pinned header + tabs on the crawl page. */
-  --top-h: 128px;
+  /* Pinned header on the crawl page. */
+  --top-h: 86px;
 
   color-scheme: light;
 }
@@ -350,6 +349,7 @@ textarea:focus {
   z-index: 20;
 }
 .topbar {
+  border-bottom: 3px solid var(--brass);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -756,35 +756,97 @@ textarea:focus {
 
 /* tab bar */
 
-.tabbar {
+/* section buttons (desktop) and ☰ menu (mobile) */
+
+.header-nav {
   display: flex;
-  height: var(--tabbar-h);
-  background: var(--wood);
-  border-top: 1px solid rgb(255 255 255 / 0.08);
-  border-bottom: 3px solid var(--brass);
-}
-.tab {
-  flex: 1;
-  border: none;
-  border-bottom: 3px solid transparent;
-  margin-bottom: -3px; /* active underline sits on the brass rule */
-  background: transparent;
-  color: #d9c6a6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   gap: 6px;
-  font-size: 0.9rem;
+}
+.header-nav-btn {
+  border: 1px solid rgb(255 255 255 / 0.18);
+  background: transparent;
+  color: #f6ead2;
   font-weight: 700;
+  font-size: 0.9rem;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.header-nav-btn:hover {
+  background: rgb(255 255 255 / 0.08);
+}
+.header-nav-btn.on {
+  background: rgb(255 255 255 / 0.14);
+  border-color: var(--amber);
+  color: var(--amber);
+}
+.burger {
+  position: relative;
+}
+.burger-btn {
+  width: 42px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgb(255 255 255 / 0.25);
+  background: transparent;
+  color: #fbe3b0;
+  font-size: 1.25rem;
+  line-height: 1;
   cursor: pointer;
 }
-.tab-icon {
-  font-size: 1.05rem;
+.burger-btn.on {
+  background: rgb(255 255 255 / 0.12);
 }
-.tab-active {
-  color: var(--amber);
-  border-bottom-color: var(--amber);
-  background: rgb(255 255 255 / 0.06);
+.burger-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 220px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.3);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  z-index: 40;
+  animation: slide-up 0.15s ease-out;
+}
+.burger-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 1rem;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.burger-item:hover,
+.burger-item.on {
+  background: var(--surface-2);
+}
+.burger-icon {
+  width: 24px;
+  text-align: center;
+}
+.burger-here {
+  margin-left: auto;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--sign-green-2);
+}
+.burger-home {
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 10px 10px;
+  margin-top: 4px;
 }
 
 /* share sheet */
