@@ -38,6 +38,20 @@ You need **two separate API keys**:
 The map uses Advanced Markers, which need a Map ID. It defaults to Google's `DEMO_MAP_ID`.
 To use your own styled map, set `VITE_GOOGLE_MAPS_MAP_ID` (optional).
 
+### Email (Resend)
+
+Password-reset emails are sent with [Resend](https://resend.com) from `noreply@pintroute.com`.
+
+1. Create a Resend account, then **Domains → Add domain** → `pintroute.com`.
+2. Add the DNS records Resend shows (SPF, DKIM) to `pintroute.com` in Cloudflare
+   (**DNS → Records**). Resend's "Sign in to Cloudflare" button can add them for you.
+   Wait until Resend shows the domain as **Verified**.
+3. **API Keys → Create API key** with *Sending access*, restricted to `pintroute.com`.
+4. Add it to the Worker as the `RESEND_API_KEY` secret (see the table below).
+
+The sender address is the `EMAIL_FROM` variable in `wrangler.jsonc`. Until the key is set,
+reset requests still succeed for the user, but no email is sent and the Worker logs an error.
+
 ---
 
 ## 2. Cloudflare Workers Builds settings
@@ -63,6 +77,7 @@ that `wrangler d1 migrations apply` and `wrangler deploy` both pick up automatic
 | Name | Kind | Where to set it | Notes |
 | --- | --- | --- | --- |
 | `GOOGLE_PLACES_API_KEY` | **Runtime secret** | Worker → Settings → **Variables and Secrets** → Add → type *Secret* (or `npx wrangler secret put GOOGLE_PLACES_API_KEY`) | Server-side key. Never exposed to the browser. |
+| `RESEND_API_KEY` | **Runtime secret** | Worker → Settings → **Variables and Secrets** → Add → type *Secret* | Resend API key for password-reset emails. |
 | `VITE_GOOGLE_MAPS_KEY` | **Build variable** | Worker → Settings → **Build** → **Variables and secrets** | Inlined into the JS bundle at build time, so it must be a *build* variable. It's public, so restrict it by HTTP referrer. |
 | `VITE_GOOGLE_MAPS_MAP_ID` | Build variable (optional) | Same as above | Defaults to `DEMO_MAP_ID`. |
 
@@ -133,8 +148,12 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
   Owners can edit their crawls from any device they're logged in on. Logging out removes this
   device's edit tokens for the account's crawls, so the next person on a shared phone can't
   edit them.
-- **Not built yet:** password reset (needs an email-sending service), changing email or
-  password, and deleting an account.
+- **Password reset:** "Forgot password?" emails a one-time link (via Resend) that expires
+  after 1 hour; requesting a new link cancels the old one. The token travels in the URL
+  fragment (`/reset-password#token=…`) so it never reaches server logs, and D1 stores only
+  its SHA-256. Setting a new password signs the account out everywhere and logs in on that
+  device. The response is identical, and equally fast, whether or not the email has an account.
+- **Not built yet:** changing email or password while logged in, and deleting an account.
 
 ### Sharing & editing
 
@@ -161,6 +180,8 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 | `POST /api/auth/login` | – | `{ email, password }` → sets session cookie |
 | `POST /api/auth/logout` | session | Ends the session |
 | `GET /api/auth/me` | – | `{ user }` (or `null`) |
+| `POST /api/auth/forgot` | – | `{ email }` → emails a reset link if the account exists (always `{ ok: true }`) |
+| `POST /api/auth/reset` | – | `{ token, password }` → sets the new password, ends other sessions, logs in |
 | `GET /api/me/crawls` | session | The user's crawls, newest first |
 | `POST /api/me/claim` | session | `{ crawls: [{ slug, editToken }] }` → moves guest crawls into the account |
 | `POST /api/crawls` | – | Create crawl → `{ slug, editToken }` (owned by the user if logged in) |
@@ -177,7 +198,7 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 
 ```
 migrations/            D1 SQL migrations
-src/worker/            Worker API (index.ts router, auth.ts accounts, crawls.ts D1, google.ts Places/Routes, cache.ts)
+src/worker/            Worker API (index.ts router, auth.ts accounts, email.ts Resend, crawls.ts D1, google.ts Places/Routes, cache.ts)
 src/client/            React app (pages/, components/, auth.tsx, styles.css)
 src/shared/types.ts    Types shared by the Worker and the client
 wrangler.jsonc         Worker name, D1 binding, rate limiters, assets config

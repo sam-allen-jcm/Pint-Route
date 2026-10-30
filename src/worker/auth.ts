@@ -8,6 +8,7 @@
 
 import type { User } from "../shared/types";
 import { fromBase64Url, randomToken, sha256, timingSafeEqual, toBase64Url } from "./crypto";
+import { passwordResetEmail, sendEmail } from "./email";
 import type { Env } from "./env";
 import { HttpError, json } from "./http";
 
@@ -193,4 +194,86 @@ export async function logout(request: Request, env: Env): Promise<Response> {
 
 export async function me(request: Request, env: Env): Promise<Response> {
   return json({ user: await getUser(request, env) });
+}
+
+// ---------- password reset ----------
+
+const RESET_MINUTES = 60;
+
+/**
+ * Emails a one-time reset link if the address has an account. Always answers
+ * the same way, and sends in the background, so the response (and its timing)
+ * doesn't reveal whether an email is registered.
+ */
+export async function forgotPassword(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+  body: Record<string, unknown>,
+): Promise<Response> {
+  const email = cleanEmail(body.email);
+  await rateLimit(request, env, "forgot", email);
+
+  const origin = new URL(request.url).origin;
+  ctx.waitUntil(
+    (async () => {
+      const user = await env.DB.prepare("SELECT id, email, display_name FROM users WHERE email = ?")
+        .bind(email)
+        .first<{ id: number; email: string; display_name: string }>();
+      if (!user) return;
+      const token = randomToken();
+      const expires = new Date(Date.now() + RESET_MINUTES * 60_000).toISOString();
+      await env.DB.batch([
+        // Only the newest link works.
+        env.DB.prepare("DELETE FROM password_resets WHERE user_id = ?").bind(user.id),
+        env.DB.prepare("INSERT INTO password_resets (id, user_id, expires_at) VALUES (?, ?, ?)").bind(
+          await sha256(token),
+          user.id,
+          expires,
+        ),
+      ]);
+      // The token goes in the URL fragment, which browsers never send to servers
+      // or put in Referer headers.
+      const link = `${origin}/reset-password#token=${token}`;
+      await sendEmail(env, { to: user.email, ...passwordResetEmail(user.display_name, link) });
+    })().catch((err) => console.error("forgotPassword failed", err)),
+  );
+
+  return json({ ok: true });
+}
+
+/** Sets a new password from a reset link, signs out everywhere else, and logs in. */
+export async function resetPassword(env: Env, body: Record<string, unknown>): Promise<Response> {
+  const token = typeof body.token === "string" && body.token.length <= 100 ? body.token : "";
+  const password = cleanPassword(body.password, true);
+  const invalid = new HttpError(400, "This reset link is invalid or has expired. Please request a new one.");
+  if (!token) throw invalid;
+
+  const id = await sha256(token);
+  const reset = await env.DB.prepare(
+    "SELECT user_id FROM password_resets WHERE id = ? AND used_at IS NULL AND expires_at > ?",
+  )
+    .bind(id, new Date().toISOString())
+    .first<{ user_id: number }>();
+  if (!reset) throw invalid;
+
+  // Mark used first; if two requests race, only one gets changes = 1.
+  const claimed = await env.DB.prepare(
+    "UPDATE password_resets SET used_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ? AND used_at IS NULL",
+  )
+    .bind(id)
+    .run();
+  if (!claimed.meta.changes) throw invalid;
+
+  await env.DB.batch([
+    env.DB.prepare("UPDATE users SET password_hash = ? WHERE id = ?").bind(await hashPassword(password), reset.user_id),
+    // Whoever knew the old password is signed out everywhere.
+    env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(reset.user_id),
+  ]);
+
+  const user = await env.DB.prepare("SELECT id, email, display_name FROM users WHERE id = ?")
+    .bind(reset.user_id)
+    .first<{ id: number; email: string; display_name: string }>();
+  if (!user) throw invalid;
+  return json({ user: toUser(user) }, { headers: { "Set-Cookie": await startSession(env, user.id) } });
 }

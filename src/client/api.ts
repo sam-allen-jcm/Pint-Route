@@ -47,6 +47,15 @@ export const api = {
       body: JSON.stringify({ email, password }),
     }).then((r) => r.user);
   },
+  forgotPassword(email: string) {
+    return request<{ ok: true }>("/api/auth/forgot", { method: "POST", body: JSON.stringify({ email }) });
+  },
+  resetPassword(token: string, password: string) {
+    return request<{ user: User }>("/api/auth/reset", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
+    }).then((r) => r.user);
+  },
   logout() {
     return request<{ ok: true }>("/api/auth/logout", { method: "POST" });
   },

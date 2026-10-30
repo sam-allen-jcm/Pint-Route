@@ -8,6 +8,8 @@ interface AuthState {
   user: User | null | undefined;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
+  /** Sets a new password from a reset link and logs in. */
+  resetPassword: (token: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -46,6 +48,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(u);
   }, []);
 
+  const resetPassword = useCallback(async (token: string, password: string) => {
+    const u = await api.resetPassword(token, password);
+    await claimDeviceCrawls();
+    setUser(u);
+  }, []);
+
   const logout = useCallback(async () => {
     // Forget this device's edit tokens for crawls that live in the account, so
     // the next person on this phone can't edit them after logging out.
@@ -59,7 +67,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  const value = useMemo(() => ({ user, login, register, logout }), [user, login, register, logout]);
+  const value = useMemo(
+    () => ({ user, login, register, resetPassword, logout }),
+    [user, login, register, resetPassword, logout],
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

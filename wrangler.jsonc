@@ -5,6 +5,11 @@
   "compatibility_date": "2026-09-01",
   "observability": { "enabled": true },
 
+  // Sender for password-reset emails. The domain must be verified in Resend.
+  "vars": {
+    "EMAIL_FROM": "Pint Route <noreply@pintroute.com>"
+  },
+
   // The React app is built by Vite into static assets. Requests for /api/* go
   // to the Worker first; every other unknown path falls back to index.html so
   // client-side routes like /c/<slug> work on refresh.
@@ -41,6 +46,7 @@
 
   // Secrets (not stored in this file):
   //   GOOGLE_PLACES_API_KEY – server-side key for Places API (New) + Routes API.
-  //   Set it in the dashboard (Worker → Settings → Variables and Secrets) or
-  //   with: npx wrangler secret put GOOGLE_PLACES_API_KEY
+  //   RESEND_API_KEY        – Resend API key for password-reset emails.
+  //   Set them in the dashboard (Worker → Settings → Variables and Secrets) or
+  //   with: npx wrangler secret put <NAME>
 }

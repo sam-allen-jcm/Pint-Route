@@ -922,3 +922,12 @@ textarea:focus {
   font-weight: 400;
   color: var(--muted);
 }
+.forgot-link {
+  align-self: flex-end;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-top: -6px;
+}
+.error-hint {
+  color: var(--red);
+}

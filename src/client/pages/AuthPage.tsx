@@ -104,6 +104,11 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
             </div>
             {isRegister && <span className="hint">At least 8 characters</span>}
           </label>
+          {!isRegister && (
+            <Link to="/forgot-password" className="forgot-link">
+              Forgot password?
+            </Link>
+          )}
 
           {error && (
             <p className="error" role="alert">

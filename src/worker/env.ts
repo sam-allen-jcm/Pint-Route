@@ -6,4 +6,10 @@ export interface Env {
   /** Rate limiters for login/register (wrangler.jsonc "ratelimits"). */
   AUTH_EMAIL_LIMITER?: RateLimit;
   AUTH_IP_LIMITER?: RateLimit;
+  /** Secret: Resend API key for outgoing email. */
+  RESEND_API_KEY?: string;
+  /** Sender for outgoing email, e.g. "Pint Route <noreply@pintroute.com>". */
+  EMAIL_FROM?: string;
+  /** Local development only: "true" prints unsent emails to the console. */
+  DEV_LOG_EMAILS?: string;
 }

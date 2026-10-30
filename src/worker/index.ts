@@ -1,5 +1,5 @@
 import { MAX_STOPS, type LatLng } from "../shared/types";
-import { login, logout, me, register, requireUser } from "./auth";
+import { forgotPassword, login, logout, me, register, requireUser, resetPassword } from "./auth";
 import {
   addStop,
   claimCrawls,
@@ -30,7 +30,7 @@ function parseNear(url: URL): LatLng | null {
   return near;
 }
 
-async function handleApi(request: Request, env: Env, url: URL): Promise<Response> {
+async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url: URL): Promise<Response> {
   const path = url.pathname.replace(/\/+$/, "");
   const method = request.method;
   let m: RegExpMatchArray | null;
@@ -59,6 +59,10 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   if (path === "/api/auth/login" && method === "POST") return login(request, env, await readJson(request));
   if (path === "/api/auth/logout" && method === "POST") return logout(request, env);
   if (path === "/api/auth/me" && method === "GET") return me(request, env);
+  if (path === "/api/auth/forgot" && method === "POST") {
+    return forgotPassword(request, env, ctx, await readJson(request));
+  }
+  if (path === "/api/auth/reset" && method === "POST") return resetPassword(env, await readJson(request));
   if (path === "/api/me/crawls" && method === "GET") {
     const user = await requireUser(request, env);
     return json({ crawls: await listMyCrawls(env, user.id) });
@@ -112,11 +116,11 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
 }
 
 export default {
-  async fetch(request, env): Promise<Response> {
+  async fetch(request, env, ctx): Promise<Response> {
     const url = new URL(request.url);
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
     try {
-      return await handleApi(request, env, url);
+      return await handleApi(request, env, ctx, url);
     } catch (err) {
       if (err instanceof HttpError) return json({ error: err.message }, { status: err.status });
       console.error(err);
