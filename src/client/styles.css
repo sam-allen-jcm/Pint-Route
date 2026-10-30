@@ -1495,3 +1495,44 @@ textarea:focus {
   box-shadow: 0 0 0 2px rgb(26 115 232 / 0.35), 0 1px 4px rgb(0 0 0 / 0.4);
   transform: translateY(50%); /* centre the dot on the position */
 }
+
+/* ---------- schedule ---------- */
+
+.schedule-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.schedule-row input {
+  min-width: 0;
+}
+.schedule-card {
+  margin: 0;
+}
+.schedule-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.schedule-line {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-weight: 700;
+}
+.arrival {
+  font-size: 0.85rem;
+}
+.arrival-time {
+  font-weight: 700;
+}
+.soon {
+  color: #a35f00;
+  font-weight: 700;
+}
+@media (prefers-color-scheme: dark) {
+  .soon {
+    color: #f0b04a;
+  }
+}

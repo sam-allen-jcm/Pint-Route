@@ -28,6 +28,8 @@ export function HomePage() {
   const [countryCode, setCountryCode] = useState(defaultCountry);
   const [city, setCity] = useState<PickedCity | null>(null);
   const [sessionToken] = useState(() => crypto.randomUUID());
+  const [startDate, setStartDate] = useState("");
+  const [startTime, setStartTime] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accountCrawls, setAccountCrawls] = useState<CrawlSummary[] | null>(null);
@@ -68,6 +70,7 @@ export function HomePage() {
         countryCode,
         cityPlaceId: city?.placeId ?? null,
         sessionToken: city ? sessionToken : null,
+        startsAt: startDate && startTime ? `${startDate}T${startTime}` : null,
       });
       rememberCountry(countryCode);
       savedCrawls.save(slug, name.trim(), editToken);
@@ -136,6 +139,28 @@ export function HomePage() {
             </span>
             <CityPicker countryCode={countryCode} value={city} onChange={setCity} sessionToken={sessionToken} />
           </div>
+          <div className="field">
+            <span>
+              When <span className="optional">(optional)</span>
+            </span>
+            <div className="schedule-row">
+              <input
+                type="date"
+                aria-label="Start date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+              <input
+                type="time"
+                aria-label="Start time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+              />
+            </div>
+            {(startDate && !startTime) || (!startDate && startTime) ? (
+              <span className="hint">Add both a date and a time, or leave both blank.</span>
+            ) : null}
+          </div>
           <label className="field">
             <span>Crawl name</span>
             <input
@@ -147,7 +172,10 @@ export function HomePage() {
               required
             />
           </label>
-          <button className="btn btn-primary btn-block" disabled={busy || !name.trim()}>
+          <button
+            className="btn btn-primary btn-block"
+            disabled={busy || !name.trim() || Boolean(startDate) !== Boolean(startTime)}
+          >
             {busy ? "Pulling a pint…" : "Create crawl"}
           </button>
           {error && <p className="error">{error}</p>}

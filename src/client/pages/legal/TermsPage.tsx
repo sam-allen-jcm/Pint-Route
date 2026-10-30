@@ -42,7 +42,8 @@ export function TermsPage() {
         </li>
         <li>Venues can refuse entry or service, and may ask for ID.</li>
         <li>
-          Walking routes, times and distances are <strong>estimates only</strong>. For stops very close together, we
+          Walking routes, times and distances, and estimated arrival times (and whether a venue will be open
+          then), are <strong>estimates only</strong>. For stops very close together, we
           may show a direct line instead of the official route. Routes may not reflect road conditions, closures,
           accessibility or safety. Use your own judgement, follow the law and road signs, and{" "}
           <strong>use proper crossings</strong>.

@@ -151,6 +151,17 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 - **Edit crawl** tab (editors): meeting point, reorder (▲/▼) and remove (✕) stops, add pubs, and
   delete the crawl.
 
+### Start time and opening hours
+
+- A crawl can have an optional start date and time (set when creating it, or in **Edit crawl → When**)
+  and a "time at each pub" (default 45 minutes). Stored as local wall-clock time
+  (`crawls.starts_at`, `crawls.minutes_per_stop`).
+- Each stop then shows an estimated arrival time: start, plus walking legs, plus time at earlier pubs.
+  It also shows whether the venue will be open then ("Open until 11 PM", "⚠ Closes 10:30 PM, soon after
+  you arrive", "⚠ Closed then, opens 5 PM"), worked out from Google's opening-hours periods
+  (`src/shared/hours.ts`). It uses the dated hours for the next 7 days, which include holidays, and the
+  regular weekly hours further ahead.
+
 ### Meeting point
 
 - A crawl can have an optional **meeting point** before stop 1. It can be any place (a market,

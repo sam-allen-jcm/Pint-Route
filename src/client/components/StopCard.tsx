@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import type { PlaceDetails, Stop } from "../../shared/types";
+import { formatClock, formatDay, type LocalTime } from "../../shared/hours";
 import { api } from "../api";
+import type { StopTiming } from "../schedule";
 import { formatDate, statusLabel, stripDay, todayIso } from "../format";
 
 interface Props {
@@ -12,10 +14,12 @@ interface Props {
   /** Can add/edit notes (edit rights and logged in). */
   canNote: boolean;
   onUpdate: (patch: { visitedOn?: string | null; note?: string | null }) => Promise<void>;
+  /** Estimated arrival and open/closed status then, when the crawl has a start time. */
+  timing?: StopTiming | null;
 }
 
 /** A stop on the Stops tab: details, tick off, notes. Reordering/removing lives in "Edit crawl". */
-export function StopCard({ stop, index, place, canEdit, canNote, onUpdate }: Props) {
+export function StopCard({ stop, index, place, canEdit, canNote, onUpdate, timing }: Props) {
   const [note, setNote] = useState(stop.note ?? "");
   const [editingNote, setEditingNote] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -54,7 +58,8 @@ export function StopCard({ stop, index, place, canEdit, canNote, onUpdate }: Pro
           <h3 className="stop-name">{place?.name ?? <span className="skeleton">Loading pub…</span>}</h3>
           {place && <div className="stop-address">{place.address}</div>}
           {flag && <div className="flag">⚠ {flag}</div>}
-          {place && !closed && (place.openNow !== null || place.todayHours) && (
+          {timing && !visited && !closed && <ArrivalLine timing={timing} />}
+          {!(timing && !visited) && place && !closed && (place.openNow !== null || place.todayHours) && (
             <div className="stop-hours">
               {place.openNow !== null && (
                 <span className={place.openNow ? "open" : "shut"}>{place.openNow ? "Open now" : "Closed now"}</span>
@@ -139,5 +144,33 @@ export function StopCard({ stop, index, place, canEdit, canNote, onUpdate }: Pro
       )}
       {error && <p className="error">{error}</p>}
     </article>
+  );
+}
+
+/** "🕖 Arrive ~7:15 PM · Open until 11 PM", or a warning if it'll be closed. */
+function ArrivalLine({ timing }: { timing: StopTiming }) {
+  const { arrive, status } = timing;
+  const when = (t: LocalTime) => {
+    if (t.minutes === 0 && t.date > arrive.date) return "midnight"; // closing at 00:00 the next day
+    return t.date === arrive.date ? formatClock(t) : `${formatDay(t.date)} ${formatClock(t)}`;
+  };
+  return (
+    <div className="arrival">
+      <span className="arrival-time">🕖 Arrive ~{formatClock(arrive)}</span>
+      {status === null ? (
+        <span className="muted"> · Opening hours unknown</span>
+      ) : status.open ? (
+        status.closingSoon && status.closesAt ? (
+          <span className="soon"> · ⚠ Closes at {when(status.closesAt)}, soon after you arrive</span>
+        ) : (
+          <span className="open"> · Open{status.closesAt ? ` until ${when(status.closesAt)}` : " 24 hours"}</span>
+        )
+      ) : (
+        <span className="shut">
+          {" "}
+          · ⚠ Closed then{status.opensAt ? `, opens ${when(status.opensAt)}` : ""}
+        </span>
+      )}
+    </div>
   );
 }

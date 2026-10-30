@@ -1,3 +1,5 @@
+import type { OpeningHours } from "./hours";
+
 // Types shared by the Worker API and the React client.
 
 export type BusinessStatus =
@@ -34,6 +36,8 @@ export interface PlaceDetails extends PlaceSummary {
   /** Today's opening hours line, e.g. "Monday: 11:00 AM – 11:00 PM" */
   todayHours: string | null;
   weekdayHours: string[];
+  /** Structured opening hours, to check a future arrival time. */
+  hours: OpeningHours | null;
   photo: PhotoRef | null;
 }
 
@@ -111,6 +115,10 @@ export interface Crawl {
   countryCode: string | null;
   area: Area | null;
   meetingPoint: MeetingPoint | null;
+  /** Local start date/time "YYYY-MM-DDTHH:MM", or null if not set. */
+  startsAt: string | null;
+  /** Minutes spent at each stop, for arrival estimates. */
+  minutesPerStop: number;
 }
 
 export interface CreatedCrawl {
@@ -152,3 +160,4 @@ export interface StatsResponse {
 }
 
 export const MAX_STOPS = 25;
+export const DEFAULT_MINUTES_PER_STOP = 45;

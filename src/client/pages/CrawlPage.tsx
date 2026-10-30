@@ -4,6 +4,9 @@ import { MEETING_POINT_ID, type Crawl, type CrawlRoute, type PlaceDetails, type 
 import { api, ApiError } from "../api";
 import { AreaSheet } from "../components/AreaSheet";
 import { EditStops } from "../components/EditStops";
+import { ScheduleEditor } from "../components/ScheduleEditor";
+import { finishTime, planArrivals } from "../schedule";
+import { formatClock, formatDay, parseStart } from "../../shared/hours";
 import { MeetingPointSheet } from "../components/MeetingPointSheet";
 import { CrawlMap } from "../components/CrawlMap";
 import { SearchPanel } from "../components/SearchPanel";
@@ -256,6 +259,18 @@ export function CrawlPage() {
       }
     : null;
 
+  // Estimated arrival at each stop, if the crawl has a start time.
+  const timings = planArrivals(crawl.startsAt, crawl.minutesPerStop, stops, places, meetingLeg, legAfter);
+  const start = parseStart(crawl.startsAt);
+  const finish = finishTime(timings, crawl.minutesPerStop);
+  const scheduleLine = start ? (
+    <div className="schedule-line">
+      📅 {formatDay(start.date)} · start {formatClock(start)}
+      {finish && ` · finish ~${formatClock(finish)}`}
+      {!routeFresh && stops.length > 1 && <span className="muted"> (updating…)</span>}
+    </div>
+  ) : null;
+
   const meetingSection =
     meeting ? (
       <div className="meeting">
@@ -266,7 +281,7 @@ export function CrawlPage() {
                 🚩
               </div>
               <div className="stop-body">
-                <div className="meeting-label">Meeting point</div>
+                <div className="meeting-label">Meeting point{start && ` · ${formatClock(start)}`}</div>
                 <h3 className="stop-name">{meeting.name}</h3>
                 {meeting.address && <div className="stop-address">{meeting.address}</div>}
                 {meeting.googleMapsUri && (
@@ -284,6 +299,7 @@ export function CrawlPage() {
 
   const stopsPanel = (
     <section className="stack">
+      {scheduleLine}
       {meetingSection}
       {stops.length === 0 ? (
         <div className="empty">
@@ -310,6 +326,7 @@ export function CrawlPage() {
                   canEdit={canEdit}
                   canNote={canEdit && Boolean(user)}
                   onUpdate={(patch) => updateStop(stop, patch)}
+                  timing={timings?.[i] ?? null}
                 />
                 {i < stops.length - 1 && <LegRow leg={leg} failed={Boolean(routeError)} />}
               </li>
@@ -329,6 +346,7 @@ export function CrawlPage() {
 
   const editPanel = (
     <div className="stack edit-panel">
+      <ScheduleEditor crawl={crawl} editToken={editToken} onSaved={setCrawl} />
       <EditStops
         stops={stops}
         places={places}

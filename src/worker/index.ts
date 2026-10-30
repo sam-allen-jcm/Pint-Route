@@ -148,6 +148,7 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
     const created = await createCrawl(request, env, body);
     track("crawl_created", typeof body.countryCode === "string" ? body.countryCode.toUpperCase() : "");
     if (body.cityPlaceId) track("crawl_created_with_town");
+    if (body.startsAt) track("crawl_created_with_start_time");
     if (await getUser(request, env)) track("crawl_created_logged_in");
     return json(created, { status: 201 });
   }
@@ -173,6 +174,7 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
       if ("name" in body) track("crawl_renamed");
       if ("countryCode" in body) track("crawl_area_changed");
       if ("meetPlaceId" in body) track(body.meetPlaceId ? "meeting_point_set" : "meeting_point_removed");
+      if ("startsAt" in body) track(body.startsAt ? "start_time_set" : "start_time_cleared");
       return json(await getCrawl(request, env, slug));
     }
     if (method === "DELETE") {

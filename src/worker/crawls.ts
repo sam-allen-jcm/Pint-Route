@@ -1,4 +1,4 @@
-import { MAX_STOPS, type Area, type MeetingPoint, type Crawl, type CrawlSummary, type CreatedCrawl, type Stop } from "../shared/types";
+import { DEFAULT_MINUTES_PER_STOP, MAX_STOPS, type Area, type MeetingPoint, type Crawl, type CrawlSummary, type CreatedCrawl, type Stop } from "../shared/types";
 import type { Env } from "./env";
 import { countryName, countryPlaceId, getArea, getMeetingPoint, getPlace, isPlaceId } from "./google";
 import { getUser } from "./auth";
@@ -14,6 +14,8 @@ interface CrawlRow {
   country_code: string | null;
   area_place_id: string | null;
   meet_place_id: string | null;
+  starts_at: string | null;
+  minutes_per_stop: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -32,6 +34,27 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 function randomSlug(length = 10): string {
   const bytes = crypto.getRandomValues(new Uint8Array(length));
   return Array.from(bytes, (b) => SLUG_ALPHABET[b % SLUG_ALPHABET.length]).join("");
+}
+
+/** "YYYY-MM-DDTHH:MM" (a real date and time) or null. */
+function cleanStartsAt(v: unknown): string | null {
+  if (v === null || v === undefined || v === "") return null;
+  const m = typeof v === "string" ? v.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/) : null;
+  if (!m) throw new HttpError(400, "Start must be a date and time");
+  const [, y, mo, d, h, mi] = m.map(Number);
+  const dt = new Date(Date.UTC(y, mo - 1, d, h, mi));
+  if (dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d || h > 23 || mi > 59) {
+    throw new HttpError(400, "Start must be a valid date and time");
+  }
+  if (y < 2000 || y > 2100) throw new HttpError(400, "Start date is out of range");
+  return v as string;
+}
+
+function cleanMinutesPerStop(v: unknown): number | null {
+  if (v === null || v === undefined) return null;
+  const n = Number(v);
+  if (!Number.isInteger(n) || n < 10 || n > 240) throw new HttpError(400, "Time per pub must be 10–240 minutes");
+  return n;
 }
 
 function cleanName(name: unknown): string {
@@ -121,9 +144,18 @@ async function resolveArea(
 export async function createCrawl(
   request: Request,
   env: Env,
-  body: { name?: unknown; countryCode?: unknown; cityPlaceId?: unknown; sessionToken?: unknown },
+  body: {
+    name?: unknown;
+    countryCode?: unknown;
+    cityPlaceId?: unknown;
+    sessionToken?: unknown;
+    startsAt?: unknown;
+    minutesPerStop?: unknown;
+  },
 ): Promise<CreatedCrawl> {
   const name = cleanName(body.name);
+  const startsAt = cleanStartsAt(body.startsAt);
+  const minutesPerStop = cleanMinutesPerStop(body.minutesPerStop);
   const { countryCode, areaPlaceId } = await resolveArea(env, body);
   const user = await getUser(request, env);
   const editToken = randomToken();
@@ -132,9 +164,10 @@ export async function createCrawl(
     const slug = randomSlug();
     try {
       await env.DB.prepare(
-        "INSERT INTO crawls (slug, name, edit_token_hash, owner_id, country_code, area_place_id) VALUES (?, ?, ?, ?, ?, ?)",
+        `INSERT INTO crawls (slug, name, edit_token_hash, owner_id, country_code, area_place_id, starts_at, minutes_per_stop)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-        .bind(slug, name, hash, user?.id ?? null, countryCode, areaPlaceId)
+        .bind(slug, name, hash, user?.id ?? null, countryCode, areaPlaceId, startsAt, minutesPerStop)
         .run();
       return { slug, editToken };
     } catch (err) {
@@ -158,6 +191,8 @@ export async function getCrawl(request: Request, env: Env, slug: string): Promis
     countryCode: crawl.country_code,
     area: await loadArea(env, crawl.area_place_id),
     meetingPoint: await loadMeetingPoint(env, crawl.meet_place_id),
+    startsAt: crawl.starts_at,
+    minutesPerStop: crawl.minutes_per_stop ?? DEFAULT_MINUTES_PER_STOP,
   };
 }
 
@@ -251,11 +286,27 @@ export async function updateCrawl(
   request: Request,
   env: Env,
   slug: string,
-  body: { name?: unknown; countryCode?: unknown; cityPlaceId?: unknown; sessionToken?: unknown; meetPlaceId?: unknown },
+  body: {
+    name?: unknown;
+    countryCode?: unknown;
+    cityPlaceId?: unknown;
+    sessionToken?: unknown;
+    meetPlaceId?: unknown;
+    startsAt?: unknown;
+    minutesPerStop?: unknown;
+  },
 ) {
   const crawl = await requireEdit(request, env, slug);
   const sets: string[] = [];
-  const values: (string | null)[] = [];
+  const values: (string | number | null)[] = [];
+  if ("startsAt" in body) {
+    sets.push("starts_at = ?");
+    values.push(cleanStartsAt(body.startsAt));
+  }
+  if ("minutesPerStop" in body) {
+    sets.push("minutes_per_stop = ?");
+    values.push(cleanMinutesPerStop(body.minutesPerStop));
+  }
   if ("name" in body) {
     sets.push("name = ?");
     values.push(cleanName(body.name));

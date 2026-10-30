@@ -14,6 +14,7 @@ import type {
 } from "../shared/types";
 import { isCountryCode } from "../shared/countries";
 import { distanceMeters, encodePolyline } from "../shared/geo";
+import type { HoursPeriod } from "../shared/hours";
 import { cached } from "./cache";
 import type { Env } from "./env";
 import { HttpError } from "./http";
@@ -22,6 +23,8 @@ const PLACES = "https://places.googleapis.com/v1";
 const ROUTES = "https://routes.googleapis.com/directions/v2:computeRoutes";
 
 const DETAILS_TTL = 300; // 5 minutes
+// Bump when the details fields change so cached entries without them are refetched.
+const DETAILS_VERSION = 2;
 const SEARCH_TTL = 300;
 const ROUTE_TTL = 600;
 // Bumped when the route post-processing changes, so cached routes are recomputed.
@@ -73,6 +76,8 @@ const DETAILS_FIELDS = [
   "utcOffsetMinutes",
   "currentOpeningHours.openNow",
   "currentOpeningHours.weekdayDescriptions",
+  "currentOpeningHours.periods",
+  "regularOpeningHours.periods",
   "photos",
 ].join(",");
 
@@ -94,7 +99,8 @@ interface GPlace {
   types?: string[];
   googleMapsUri?: string;
   utcOffsetMinutes?: number;
-  currentOpeningHours?: { openNow?: boolean; weekdayDescriptions?: string[] };
+  currentOpeningHours?: { openNow?: boolean; weekdayDescriptions?: string[]; periods?: HoursPeriod[] };
+  regularOpeningHours?: { periods?: HoursPeriod[] };
   photos?: { name: string; authorAttributions?: { displayName: string; uri?: string }[] }[];
 }
 
@@ -199,7 +205,7 @@ export function searchPlaces(
 
 export function getPlace(env: Env, id: string): Promise<PlaceDetails> {
   if (!isPlaceId(id)) throw new HttpError(400, "Invalid place id");
-  return cached(`place:${id}`, DETAILS_TTL, async () => {
+  return cached(`place${DETAILS_VERSION}:${id}`, DETAILS_TTL, async () => {
     const p = await google<GPlace>(env, `${PLACES}/places/${encodeURIComponent(id)}`, DETAILS_FIELDS);
     const photo = p.photos?.[0];
     return {
@@ -208,6 +214,10 @@ export function getPlace(env: Env, id: string): Promise<PlaceDetails> {
       openNow: p.currentOpeningHours?.openNow ?? null,
       todayHours: todayLine(p),
       weekdayHours: p.currentOpeningHours?.weekdayDescriptions ?? [],
+      hours:
+        p.regularOpeningHours?.periods || p.currentOpeningHours?.periods
+          ? { regular: p.regularOpeningHours?.periods ?? [], current: p.currentOpeningHours?.periods ?? [] }
+          : null,
       photo: photo ? { name: photo.name, attributions: photo.authorAttributions ?? [] } : null,
     };
   });

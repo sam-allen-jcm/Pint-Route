@@ -105,7 +105,10 @@ export const api = {
     const params = new URLSearchParams({ q, country: countryCode, session: sessionToken });
     return request<{ cities: CitySuggestion[] }>(`/api/places/cities?${params}`).then((r) => r.cities);
   },
-  createCrawl(name: string, where: { countryCode: string; cityPlaceId: string | null; sessionToken: string | null }) {
+  createCrawl(
+    name: string,
+    where: { countryCode: string; cityPlaceId: string | null; sessionToken: string | null; startsAt: string | null },
+  ) {
     return request<CreatedCrawl>("/api/crawls", { method: "POST", body: JSON.stringify({ name, ...where }) });
   },
   getCrawl(slug: string, editToken: string | null) {
@@ -124,6 +127,9 @@ export const api = {
       body: JSON.stringify({ meetPlaceId, ...(sessionToken ? { sessionToken } : {}) }),
       editToken,
     });
+  },
+  updateSchedule(slug: string, schedule: { startsAt: string | null; minutesPerStop: number }, editToken: string | null) {
+    return request<Crawl>(`/api/crawls/${slug}`, { method: "PATCH", body: JSON.stringify(schedule), editToken });
   },
   updateCrawlArea(
     slug: string,

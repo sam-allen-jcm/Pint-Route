@@ -46,8 +46,8 @@ export function PrivacyPage() {
           <tr>
             <td>
               <strong>Your crawls</strong>: crawl names, the pubs you add and any meeting point you choose (stored as
-              Google Place IDs), their order, the dates you tick them off, any notes, and the country and town you
-              choose
+              Google Place IDs), their order, the dates you tick them off, any notes, the country and town you
+              choose, and any start date and time
             </td>
             <td>To provide the crawl planner, and to sync your crawls across your devices if you have an account</td>
             <td>Contract</td>
@@ -142,7 +142,7 @@ export function PrivacyPage() {
       <h2>3. Crawls you share</h2>
       <p>
         Every crawl has a share link. <strong>Anyone with the link can see the crawl</strong>, including its name, the
-        meeting point, the pubs on it, which ones have been ticked off and when, and any notes. Don't put anything in a crawl you wouldn't
+        meeting point, the start date and time, the pubs on it, which ones have been ticked off and when, and any notes. Don't put anything in a crawl you wouldn't
         want the people you share it with to see. Anyone with the private edit link can change the crawl, so only share
         that with people you trust.
       </p>
