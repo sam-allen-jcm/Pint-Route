@@ -40,6 +40,7 @@ const EVENT_LABELS: Record<string, string> = {
   share_link_shared: "Share link sent/copied",
   edit_link_copied: "Private edit link copied",
   map_viewed: "Map tab opened",
+  my_location_on: "\"Show my location\" turned on",
   signup: "Sign-up",
   signup_total: "New accounts",
   login: "Log in",

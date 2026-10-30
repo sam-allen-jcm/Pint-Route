@@ -141,6 +141,16 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 - The area's location and bounds are fetched live (Essentials fields, cached 5 minutes). A crawl
   with no stops opens with the map framed on it, and text searches prefer results there.
 
+### Crawl screens
+
+- **Stops** tab: the crawl as you walk it: meeting point, each pub with "Tick off" (editors) and
+  notes (shown to all; only logged-in editors can add or edit them, enforced by the API).
+- **Map** tab (phones; always visible beside the list on wide screens): stops, route, meeting point,
+  and **Show my location**, a live blue dot with an accuracy circle that follows you as you walk
+  while the page is open. The position stays in the browser.
+- **Edit crawl** tab (editors): meeting point, reorder (▲/▼) and remove (✕) stops, add pubs, and
+  delete the crawl.
+
 ### Meeting point
 
 - A crawl can have an optional **meeting point** before stop 1. It can be any place (a market,

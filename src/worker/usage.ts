@@ -4,7 +4,7 @@
 import type { Env } from "./env";
 
 /** Actions the browser may report itself (things the server can't see). */
-export const CLIENT_EVENTS = new Set(["share_opened", "share_link_shared", "edit_link_copied", "map_viewed"]);
+export const CLIENT_EVENTS = new Set(["share_opened", "share_link_shared", "edit_link_copied", "map_viewed", "my_location_on"]);
 
 export function recordUsage(env: Env, event: string, detail = ""): Promise<void> {
   const day = new Date().toISOString().slice(0, 10);

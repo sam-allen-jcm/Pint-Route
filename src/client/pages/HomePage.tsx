@@ -71,7 +71,7 @@ export function HomePage() {
       });
       rememberCountry(countryCode);
       savedCrawls.save(slug, name.trim(), editToken);
-      navigate(`/c/${slug}?tab=add`);
+      navigate(`/c/${slug}?tab=edit`);
     } catch (err) {
       setError((err as Error).message);
       setBusy(false);

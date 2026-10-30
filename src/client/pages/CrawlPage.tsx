@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { MEETING_POINT_ID, type Crawl, type CrawlRoute, type PlaceDetails, type PlaceSummary, type RouteLeg, type Stop } from "../../shared/types";
 import { api, ApiError } from "../api";
 import { AreaSheet } from "../components/AreaSheet";
+import { EditStops } from "../components/EditStops";
 import { MeetingPointSheet } from "../components/MeetingPointSheet";
 import { CrawlMap } from "../components/CrawlMap";
 import { SearchPanel } from "../components/SearchPanel";
@@ -15,7 +16,7 @@ import { savedCrawls } from "../storage";
 import { useMediaQuery } from "../useMediaQuery";
 import { NotFound } from "./NotFound";
 
-type Tab = "stops" | "map" | "add";
+type Tab = "stops" | "map" | "edit";
 
 const hashTokens = new Map<string, string>();
 
@@ -53,7 +54,9 @@ export function CrawlPage() {
   const [renaming, setRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
 
-  const requestedTab = (params.get("tab") as Tab) || "stops";
+  // "add" was the old name of the Edit crawl tab; keep old links working.
+  const tabParam = params.get("tab");
+  const requestedTab: Tab = tabParam === "add" || tabParam === "edit" ? "edit" : tabParam === "map" ? "map" : "stops";
   const tab: Tab = wide && requestedTab === "map" ? "stops" : requestedTab;
   // Edit rights come from this device's edit token or from owning the crawl.
   const canEdit = Boolean(crawl?.canEdit);
@@ -254,7 +257,7 @@ export function CrawlPage() {
     : null;
 
   const meetingSection =
-    meeting || canEdit ? (
+    meeting ? (
       <div className="meeting">
         {meeting ? (
           <article className="stop meeting-card">
@@ -273,19 +276,8 @@ export function CrawlPage() {
                 )}
               </div>
             </div>
-            {canEdit && (
-              <div className="stop-actions">
-                <button type="button" className="text-btn" onClick={() => setEditingMeeting(true)}>
-                  Change
-                </button>
-              </div>
-            )}
           </article>
-        ) : (
-          <button type="button" className="add-meeting" onClick={() => setEditingMeeting(true)}>
-            🚩 Add a meeting point <span className="optional">(optional)</span>
-          </button>
-        )}
+        ) : null}
         {meeting && stops.length > 0 && <LegRow leg={meetingLeg} failed={Boolean(routeError)} label="Walk to the first stop" />}
       </div>
     ) : null;
@@ -300,7 +292,7 @@ export function CrawlPage() {
           </div>
           <p>No stops yet.</p>
           {canEdit && (
-            <button className="btn btn-primary" onClick={() => setTab("add")}>
+            <button className="btn btn-primary" onClick={() => setTab("edit")}>
               Find pubs to add
             </button>
           )}
@@ -314,11 +306,9 @@ export function CrawlPage() {
                 <StopCard
                   stop={stop}
                   index={i}
-                  count={stops.length}
                   place={places[stop.placeId]}
                   canEdit={canEdit}
-                  onMove={(dir) => move(i, dir)}
-                  onRemove={() => remove(stop)}
+                  canNote={canEdit && Boolean(user)}
                   onUpdate={(patch) => updateStop(stop, patch)}
                 />
                 {i < stops.length - 1 && <LegRow leg={leg} failed={Boolean(routeError)} />}
@@ -328,13 +318,39 @@ export function CrawlPage() {
         </ol>
       )}
       {stops.length > 0 && <p className="attribution">Pub details from Google Maps</p>}
-      {canEdit && (
-        <button className="text-btn danger center-self" onClick={deleteCrawl}>
-          Delete this crawl
-        </button>
+      {canEdit && !user && stops.length > 0 && (
+        <p className="muted small center-text">
+          <Link to={`/login?next=${encodeURIComponent(`/c/${slug}`)}`}>Log in</Link> to add notes to your stops.
+        </p>
       )}
       <SiteFooter compact />
     </section>
+  );
+
+  const editPanel = (
+    <div className="stack edit-panel">
+      <EditStops
+        stops={stops}
+        places={places}
+        meetingPoint={meeting}
+        onMove={move}
+        onRemove={remove}
+        onEditMeeting={() => setEditingMeeting(true)}
+      />
+      <h2 className="section-title">Add pubs</h2>
+      <SearchPanel
+        area={crawl.area}
+        from={searchFrom}
+        addedPlaceIds={new Set(placeIds)}
+        stopCount={stops.length}
+        onAdd={async (p) => {
+          await addPlace(p);
+        }}
+      />
+      <button className="text-btn danger center-self" onClick={deleteCrawl}>
+        Delete this crawl
+      </button>
+    </div>
   );
 
   const map = (
@@ -424,16 +440,8 @@ export function CrawlPage() {
 
       <div className={`crawl-layout ${wide ? "wide" : ""}`}>
         <main className="crawl-main">
-          {tab === "add" && canEdit ? (
-            <SearchPanel
-              area={crawl.area}
-              from={searchFrom}
-              addedPlaceIds={new Set(placeIds)}
-              stopCount={stops.length}
-              onAdd={async (p) => {
-                await addPlace(p);
-              }}
-            />
+          {tab === "edit" && canEdit ? (
+            editPanel
           ) : tab === "map" ? (
             <div className="map-tab">{map}</div>
           ) : (
@@ -446,7 +454,7 @@ export function CrawlPage() {
       <nav className="tabbar" aria-label="Crawl sections">
         <TabButton active={tab === "stops"} onClick={() => setTab("stops")} icon="📋" label="Stops" />
         {!wide && <TabButton active={tab === "map"} onClick={() => setTab("map")} icon="🗺️" label="Map" />}
-        {canEdit && <TabButton active={tab === "add"} onClick={() => setTab("add")} icon="➕" label="Add pubs" />}
+        {canEdit && <TabButton active={tab === "edit"} onClick={() => setTab("edit")} icon="✏️" label="Edit crawl" />}
       </nav>
 
       {editingMeeting && (

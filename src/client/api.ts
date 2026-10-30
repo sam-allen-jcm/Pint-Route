@@ -42,7 +42,7 @@ export const api = {
     return request<StatsResponse>(`/api/admin/stats?days=${days}`);
   },
   /** Anonymous usage count for something only the browser sees. Never blocks or throws. */
-  trackEvent(event: "share_opened" | "share_link_shared" | "edit_link_copied" | "map_viewed") {
+  trackEvent(event: "share_opened" | "share_link_shared" | "edit_link_copied" | "map_viewed" | "my_location_on") {
     fetch("/api/events", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

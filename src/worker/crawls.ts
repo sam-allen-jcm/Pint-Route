@@ -359,6 +359,8 @@ export async function updateStop(
     values.push(v as string | null);
   }
   if ("note" in body) {
+    // Notes are for logged-in users (as well as needing edit rights).
+    if (!(await getUser(request, env))) throw new HttpError(401, "Log in to add notes");
     const n = body.note;
     if (n !== null && typeof n !== "string") throw new HttpError(400, "note must be text or null");
     if (typeof n === "string" && n.length > 500) throw new HttpError(400, "Notes are limited to 500 characters");

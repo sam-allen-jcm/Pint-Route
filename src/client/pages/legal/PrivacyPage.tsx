@@ -68,11 +68,17 @@ export function PrivacyPage() {
           </tr>
           <tr>
             <td>
-              <strong>Your location</strong>, only when you tap "near me"
+              <strong>Your location</strong>, only when you tap "near me" or "Show my location"
             </td>
             <td>
-              To find pubs near you. It's sent to our server and Google to run that search and isn't stored against
-              you (a rounded version may be cached for up to 5 minutes to speed up repeat searches)
+              <strong>"Near me"</strong>: to find pubs near you. It's sent to our server and Google to run that search
+              and isn't stored against you (a rounded version may be cached for up to 5 minutes to speed up repeat
+              searches).
+              <br />
+              <strong>"Show my location"</strong>: to show you as a dot on the map, updating as you walk while the page
+              is open. Your location stays on your device and is never sent to us. When the map follows you, Google
+              loads map images for the area around you, as it does for any part of the map you view. Tap the button
+              again to stop.
             </td>
             <td>Consent (your browser asks permission first; you can say no)</td>
           </tr>

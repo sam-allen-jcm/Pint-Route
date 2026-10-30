@@ -1383,3 +1383,115 @@ textarea:focus {
 .danger-text {
   color: var(--red);
 }
+
+/* ---------- edit crawl tab ---------- */
+
+.edit-panel .section-title {
+  margin-top: 6px;
+}
+.edit-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.edit-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 8px 12px;
+  min-height: 56px;
+}
+.edit-row + .edit-row {
+  border-top: 1px solid var(--line);
+}
+.edit-num {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--wood);
+  color: var(--amber);
+  font-weight: 800;
+  font-family: var(--serif);
+  display: grid;
+  place-items: center;
+  font-size: 0.9rem;
+}
+.edit-meeting .edit-num {
+  background: var(--sign-green);
+}
+.edit-name {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--serif);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.edit-actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+.remove-btn {
+  color: var(--red);
+  font-size: 0.9rem;
+}
+.note-btn {
+  align-self: flex-start;
+  padding-left: 0;
+}
+
+/* ---------- my location ---------- */
+
+.map-controls {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  gap: 8px;
+  z-index: 5;
+}
+.map-btn {
+  border: 1px solid var(--brass);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 8px 12px;
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+.map-btn.on {
+  background: #1a73e8;
+  border-color: #1a73e8;
+  color: #fff;
+}
+.map-error {
+  position: absolute;
+  top: 54px;
+  left: 10px;
+  right: 10px;
+  z-index: 5;
+  background: var(--surface);
+  color: var(--red);
+  border: 1px solid var(--red);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+}
+.me-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #1a73e8;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 2px rgb(26 115 232 / 0.35), 0 1px 4px rgb(0 0 0 / 0.4);
+  transform: translateY(50%); /* centre the dot on the position */
+}

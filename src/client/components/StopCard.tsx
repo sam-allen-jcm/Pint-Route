@@ -6,15 +6,16 @@ import { formatDate, statusLabel, stripDay, todayIso } from "../format";
 interface Props {
   stop: Stop;
   index: number;
-  count: number;
   place: PlaceDetails | undefined;
+  /** Can tick pubs off (has edit rights). */
   canEdit: boolean;
-  onMove: (dir: -1 | 1) => void;
-  onRemove: () => void;
+  /** Can add/edit notes (edit rights and logged in). */
+  canNote: boolean;
   onUpdate: (patch: { visitedOn?: string | null; note?: string | null }) => Promise<void>;
 }
 
-export function StopCard({ stop, index, count, place, canEdit, onMove, onRemove, onUpdate }: Props) {
+/** A stop on the Stops tab: details, tick off, notes. Reordering/removing lives in "Edit crawl". */
+export function StopCard({ stop, index, place, canEdit, canNote, onUpdate }: Props) {
   const [note, setNote] = useState(stop.note ?? "");
   const [editingNote, setEditingNote] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -114,7 +115,7 @@ export function StopCard({ stop, index, count, place, canEdit, onMove, onRemove,
         visited && <div className="visited-line">✓ Visited {formatDate(stop.visitedOn!)}</div>
       )}
 
-      {canEdit && editingNote ? (
+      {canNote && editingNote ? (
         <textarea
           className="note-input"
           value={note}
@@ -126,34 +127,15 @@ export function StopCard({ stop, index, count, place, canEdit, onMove, onRemove,
           onBlur={saveNote}
         />
       ) : stop.note ? (
-        <p className="note" onClick={() => canEdit && setEditingNote(true)}>
+        <p className="note" onClick={() => canNote && setEditingNote(true)}>
           “{stop.note}”
         </p>
       ) : null}
 
-      {canEdit && (
-        <div className="stop-actions">
-          <button type="button" className="icon-btn" onClick={() => onMove(-1)} disabled={index === 0} aria-label="Move up">
-            ▲
-          </button>
-          <button
-            type="button"
-            className="icon-btn"
-            onClick={() => onMove(1)}
-            disabled={index === count - 1}
-            aria-label="Move down"
-          >
-            ▼
-          </button>
-          {!editingNote && (
-            <button type="button" className="text-btn" onClick={() => setEditingNote(true)}>
-              {stop.note ? "Edit note" : "Add note"}
-            </button>
-          )}
-          <button type="button" className="text-btn danger" onClick={onRemove}>
-            Remove
-          </button>
-        </div>
+      {canNote && !editingNote && (
+        <button type="button" className="text-btn note-btn" onClick={() => setEditingNote(true)}>
+          {stop.note ? "✎ Edit note" : "+ Add note"}
+        </button>
       )}
       {error && <p className="error">{error}</p>}
     </article>

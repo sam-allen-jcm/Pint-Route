@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AdvancedMarker, APIProvider, InfoWindow, Map, useMap } from "@vis.gl/react-google-maps";
 import type { Area, CrawlRoute, PlaceDetails, Stop, MeetingPoint } from "../../shared/types";
+import { MyLocationControls, MyLocationDot, useMyLocation } from "./MyLocation";
 import { decodePolyline, formatDistance, formatDuration, statusLabel } from "../format";
 
 const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY as string | undefined;
@@ -41,6 +42,7 @@ export function CrawlMap(props: Props) {
 
 function CrawlMapInner({ stops, places, route, routeUpdating, routeError, area, meetingPoint }: Props) {
   const [meetOpen, setMeetOpen] = useState(false);
+  const me = useMyLocation();
   const meetAt = meetingPoint?.location ?? null;
   const [openStop, setOpenStop] = useState<number | null>(null);
   const located = stops.filter((s) => places[s.placeId]?.location);
@@ -113,11 +115,13 @@ function CrawlMapInner({ stops, places, route, routeUpdating, routeError, area, 
           </InfoWindow>
         )}
         <RouteLines route={route} />
+        <MyLocationDot state={me} />
         <FitBounds
           points={[...(meetAt ? [meetAt] : []), ...located.map((s) => places[s.placeId].location!)]}
           area={stops.length === 0 && !meetAt ? area : null}
         />
       </Map>
+      <MyLocationControls state={me} />
       {(routeError || routeUpdating || (route && route.legs.length > 0)) && (
         <div className="map-summary">
           {routeError ? (
@@ -127,7 +131,7 @@ function CrawlMapInner({ stops, places, route, routeUpdating, routeError, area, 
           ) : route && route.legs.length > 0 ? (
             <span>
               🚶 <strong>{formatDuration(route.durationSeconds)}</strong> walking ·{" "}
-              {formatDistance(route.distanceMeters)} · {route.legs.length} legs
+              {formatDistance(route.distanceMeters)} · {route.legs.length} {route.legs.length === 1 ? "leg" : "legs"}
             </span>
           ) : null}
         </div>
