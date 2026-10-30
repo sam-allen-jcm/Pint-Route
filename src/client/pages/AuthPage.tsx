@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth";
+import { SiteFooter } from "../components/SiteFooter";
 
 /** Only allow redirects back into this app (no open redirects). */
 function safeNext(next: string | null): string {
@@ -17,6 +18,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [agreed, setAgreed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -110,6 +112,23 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
             </Link>
           )}
 
+          {isRegister && (
+            <label className="check">
+              <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} required />
+              <span>
+                I'm of legal drinking age where I live (18+ in the UK) and I agree to the{" "}
+                <Link to="/terms" target="_blank">
+                  Terms of Use
+                </Link>{" "}
+                and{" "}
+                <Link to="/privacy" target="_blank">
+                  Privacy Policy
+                </Link>
+                .
+              </span>
+            </label>
+          )}
+
           {error && (
             <p className="error" role="alert">
               {error}
@@ -118,7 +137,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
 
           <button
             className="btn btn-primary btn-block"
-            disabled={busy || !email.trim() || !password || (isRegister && !name.trim())}
+            disabled={busy || !email.trim() || !password || (isRegister && (!name.trim() || !agreed))}
           >
             {busy ? "One moment…" : isRegister ? "Create account" : "Log in"}
           </button>
@@ -132,6 +151,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
       <p className="center-text small muted">
         <Link to="/">Continue without an account</Link>
       </p>
+      <SiteFooter />
     </main>
   );
 }

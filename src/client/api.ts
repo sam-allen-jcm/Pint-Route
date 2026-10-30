@@ -40,7 +40,8 @@ export const api = {
   register(name: string, email: string, password: string) {
     return request<{ user: User }>("/api/auth/register", {
       method: "POST",
-      body: JSON.stringify({ name, email, password }),
+      // The form won't submit until the age/terms box is ticked.
+      body: JSON.stringify({ name, email, password, acceptTerms: true }),
     }).then((r) => r.user);
   },
   login(email: string, password: string) {

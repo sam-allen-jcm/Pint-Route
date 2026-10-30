@@ -6,6 +6,7 @@ import { AreaSheet } from "../components/AreaSheet";
 import { CrawlMap } from "../components/CrawlMap";
 import { SearchPanel } from "../components/SearchPanel";
 import { ShareSheet } from "../components/ShareSheet";
+import { SiteFooter } from "../components/SiteFooter";
 import { StopCard } from "../components/StopCard";
 import { useAuth } from "../auth";
 import { formatDistance, formatDuration } from "../format";
@@ -287,6 +288,7 @@ export function CrawlPage() {
           Delete this crawl
         </button>
       )}
+      <SiteFooter compact />
     </section>
   );
 

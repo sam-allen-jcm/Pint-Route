@@ -12,7 +12,8 @@ interface Email {
 
 export async function sendEmail(env: Env, email: Email): Promise<void> {
   if (!env.RESEND_API_KEY) {
-    console.error("RESEND_API_KEY is not set, so this email was not sent:", email.subject, "to", email.to);
+    // Don't log the recipient: logs shouldn't hold personal data.
+    console.error("RESEND_API_KEY is not set, so this email was not sent:", email.subject);
     if (env.DEV_LOG_EMAILS === "true") console.log(email.text);
     return;
   }

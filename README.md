@@ -148,6 +148,16 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
   straight-line distance, the leg is replaced by the direct way across (straight line, ×1.2
   for the distance, at 1.3 m/s), labelled "just across the road".
 
+### Legal and compliance
+
+- **CookieYes** consent banner script is loaded first in `index.html`.
+- Legal pages: `/privacy`, `/terms`, `/cookies`, linked from a footer on every page along with
+  "Cookie settings" (reopens CookieYes) and a responsible-drinking link.
+- Registration requires ticking a legal-drinking-age + Terms/Privacy box. The server rejects
+  sign-ups without it and records `terms_version` and `terms_accepted_at` on the account.
+- **These pages must be kept in step with the code.** The rules, file locations and data
+  inventory are in [`CLAUDE.md`](CLAUDE.md).
+
 ### Closed pubs
 
 - Search results hide anything whose `businessStatus` isn't `OPERATIONAL`, and say how many were hidden.

@@ -6,6 +6,7 @@
 // - Sessions: a random token in an HttpOnly, Secure, SameSite=Lax cookie. Only
 //   its SHA-256 is stored in D1, so a database leak doesn't leak live sessions.
 
+import { TERMS_VERSION } from "../shared/legal";
 import type { User } from "../shared/types";
 import { fromBase64Url, randomToken, sha256, timingSafeEqual, toBase64Url } from "./crypto";
 import { passwordResetEmail, sendEmail } from "./email";
@@ -157,15 +158,19 @@ export async function register(request: Request, env: Env, body: Record<string, 
   const email = cleanEmail(body.email);
   const password = cleanPassword(body.password, true);
   const name = cleanDisplayName(body.name);
+  if (body.acceptTerms !== true) {
+    throw new HttpError(400, "Please confirm you're of legal drinking age and agree to the Terms and Privacy Policy");
+  }
   await rateLimit(request, env, "register", email);
 
   const existing = await env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(email).first();
   if (existing) throw new HttpError(409, "An account with this email already exists. Try logging in.");
 
   const row = await env.DB.prepare(
-    "INSERT INTO users (email, display_name, password_hash) VALUES (?, ?, ?) RETURNING id, email, display_name",
+    `INSERT INTO users (email, display_name, password_hash, terms_version, terms_accepted_at)
+     VALUES (?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) RETURNING id, email, display_name`,
   )
-    .bind(email, name, await hashPassword(password))
+    .bind(email, name, await hashPassword(password), TERMS_VERSION)
     .first<{ id: number; email: string; display_name: string }>();
   if (!row) throw new HttpError(500, "Could not create account");
 
@@ -271,6 +276,8 @@ export async function resetPassword(env: Env, body: Record<string, unknown>): Pr
     env.DB.prepare("UPDATE users SET password_hash = ? WHERE id = ?").bind(await hashPassword(password), reset.user_id),
     // Whoever knew the old password is signed out everywhere.
     env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(reset.user_id),
+    // Reset links aren't needed once used.
+    env.DB.prepare("DELETE FROM password_resets WHERE user_id = ?").bind(reset.user_id),
   ]);
 
   const user = await env.DB.prepare("SELECT id, email, display_name FROM users WHERE id = ?")

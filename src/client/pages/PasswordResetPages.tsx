@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
+import { SiteFooter } from "../components/SiteFooter";
 
 function AuthShell({ title, lead, children }: { title: string; lead: string; children: React.ReactNode }) {
   return (
@@ -19,6 +20,7 @@ function AuthShell({ title, lead, children }: { title: string; lead: string; chi
       <p className="center-text">
         <Link to="/login">Back to log in</Link>
       </p>
+      <SiteFooter />
     </main>
   );
 }

@@ -1044,3 +1044,105 @@ textarea:focus {
   color: var(--sign-green-2);
   margin-top: 2px;
 }
+
+/* ---------- footer & legal pages ---------- */
+
+.site-footer {
+  margin-top: 32px;
+  padding: 16px 0 8px;
+  border-top: 1px dashed var(--line);
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.site-footer.compact {
+  margin-top: 12px;
+}
+.site-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 16px;
+  margin-bottom: 8px;
+}
+.site-footer a,
+.footer-link {
+  color: var(--sign-green-2);
+  font-weight: 600;
+}
+.footer-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.site-footer p {
+  margin: 4px 0;
+}
+.fine-print {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+}
+.check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+.check input {
+  width: 22px;
+  height: 22px;
+  margin: 1px 0 0;
+  flex: none;
+  accent-color: var(--sign-green-2);
+}
+.legal-card {
+  margin-top: 8px;
+}
+.legal-card h1 {
+  font-size: 1.8rem;
+  margin-bottom: 4px;
+}
+.legal-card h2 {
+  font-size: 1.15rem;
+  margin: 26px 0 8px;
+}
+.legal-card p,
+.legal-card li {
+  line-height: 1.6;
+}
+.legal-card ul {
+  padding-left: 20px;
+}
+.legal-card li {
+  margin-bottom: 6px;
+}
+.legal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin: 8px 0 12px;
+  display: block;
+  overflow-x: auto;
+}
+.legal-table th,
+.legal-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
+  min-width: 110px;
+}
+.legal-table th {
+  background: var(--surface-2);
+}
+.text-btn.inline {
+  padding: 0;
+  text-decoration: underline;
+}

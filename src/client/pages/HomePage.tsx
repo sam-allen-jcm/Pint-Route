@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import type { CrawlSummary } from "../../shared/types";
 import { api } from "../api";
 import { useAuth } from "../auth";
+import { SiteFooter } from "../components/SiteFooter";
 import { CityPicker, type PickedCity } from "../components/CityPicker";
 import { countries, defaultCountry, rememberCountry } from "../countries";
 import { savedCrawls } from "../storage";
@@ -145,6 +146,12 @@ export function HomePage() {
             {busy ? "Pulling a pint…" : "Create crawl"}
           </button>
           {error && <p className="error">{error}</p>}
+          {!user && (
+            <p className="fine-print">
+              By creating a crawl you confirm you're of legal drinking age and agree to our{" "}
+              <Link to="/terms">Terms</Link> and <Link to="/privacy">Privacy Policy</Link>.
+            </p>
+          )}
         </form>
       </section>
 
@@ -186,6 +193,7 @@ export function HomePage() {
           </p>
         )}
       </section>
+      <SiteFooter />
     </main>
   );
 }
