@@ -1,4 +1,4 @@
-import { DEFAULT_MINUTES_PER_STOP, MAX_STOPS, type Area, type MeetingPoint, type Crawl, type CrawlSummary, type CreatedCrawl, type Stop } from "../shared/types";
+import { MAX_STOPS, type Area, type MeetingPoint, type Crawl, type CrawlSummary, type CreatedCrawl, type Stop } from "../shared/types";
 import type { Env } from "./env";
 import { countryName, countryPlaceId, getArea, getMeetingPoint, getPlace, isPlaceId } from "./google";
 import { getUser } from "./auth";
@@ -192,7 +192,7 @@ export async function getCrawl(request: Request, env: Env, slug: string): Promis
     area: await loadArea(env, crawl.area_place_id),
     meetingPoint: await loadMeetingPoint(env, crawl.meet_place_id),
     startsAt: crawl.starts_at,
-    minutesPerStop: crawl.minutes_per_stop ?? DEFAULT_MINUTES_PER_STOP,
+    minutesPerStop: crawl.minutes_per_stop,
   };
 }
 

@@ -152,3 +152,25 @@ export function parseStart(startsAt: string | null): LocalTime | null {
   const m = startsAt?.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})$/);
   return m ? { date: m[1], minutes: Number(m[2]) * 60 + Number(m[3]) } : null;
 }
+
+export type DayHours =
+  | { kind: "always" } // open 24 hours
+  | { kind: "closed" }
+  | { kind: "open"; periods: { open: LocalTime; close: LocalTime | null }[] };
+
+/**
+ * A venue's opening hours on a given date: the periods that start that day
+ * (a close after midnight belongs to the day it opened). Null if unknown.
+ */
+export function openingsOn(hours: OpeningHours | null, date: string): DayHours | null {
+  if (!hours || (!hours.regular.length && !hours.current.length)) return null;
+  const start = dayNumber(date) * DAY;
+  const end = start + DAY;
+  const list = intervals(hours, { date, minutes: 12 * 60 });
+  if (list.some(([o, c]) => o <= start && c >= end && c - o >= DAY * 7)) return { kind: "always" };
+  const periods = list
+    .filter(([o]) => o >= start && o < end)
+    .sort((a, b) => a[0] - b[0])
+    .map(([o, c]) => ({ open: fromAbs(o), close: fromAbs(c) }));
+  return periods.length ? { kind: "open", periods } : { kind: "closed" };
+}

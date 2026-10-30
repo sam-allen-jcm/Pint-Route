@@ -14,14 +14,15 @@ export interface StopTiming {
  */
 export function planArrivals(
   startsAt: string | null,
-  minutesPerStop: number,
+  minutesPerStop: number | null,
   stops: Stop[],
   places: Record<string, PlaceDetails>,
   meetingLeg: RouteLeg | null,
   legAfter: (i: number) => RouteLeg | null,
 ): StopTiming[] | null {
   const start = parseStart(startsAt);
-  if (!start || !stops.length) return null;
+  // Without a time per pub there's nothing to estimate from: stops show the day's hours instead.
+  if (!start || !stops.length || minutesPerStop === null) return null;
   const out: StopTiming[] = [];
   let t = addMinutes(start, Math.round((meetingLeg?.durationSeconds ?? 0) / 60));
   stops.forEach((stop, i) => {
@@ -32,7 +33,7 @@ export function planArrivals(
 }
 
 /** When you'd leave the last stop. */
-export function finishTime(timings: StopTiming[] | null, minutesPerStop: number): LocalTime | null {
-  if (!timings?.length) return null;
+export function finishTime(timings: StopTiming[] | null, minutesPerStop: number | null): LocalTime | null {
+  if (!timings?.length || minutesPerStop === null) return null;
   return addMinutes(timings[timings.length - 1].arrive, minutesPerStop);
 }

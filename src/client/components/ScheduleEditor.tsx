@@ -1,6 +1,9 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { DEFAULT_MINUTES_PER_STOP, type Crawl } from "../../shared/types";
+import type { Crawl } from "../../shared/types";
 import { api } from "../api";
+
+/** Label for "Time at each pub" left blank. */
+export const NO_DURATION_LABEL = "Not set (show opening hours)";
 
 /** Choices for "Time at each pub" (minutes). */
 export const DURATIONS = [20, 30, 45, 60, 75, 90, 120];
@@ -21,7 +24,8 @@ interface Props {
 export function ScheduleEditor({ crawl, editToken, onSaved }: Props) {
   const [date, setDate] = useState(crawl.startsAt?.slice(0, 10) ?? "");
   const [time, setTime] = useState(crawl.startsAt?.slice(11, 16) ?? "");
-  const [perStop, setPerStop] = useState(crawl.minutesPerStop ?? DEFAULT_MINUTES_PER_STOP);
+  // null = not set: stops show the day's opening hours rather than arrival estimates.
+  const [perStop, setPerStop] = useState<number | null>(crawl.minutesPerStop);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +34,7 @@ export function ScheduleEditor({ crawl, editToken, onSaved }: Props) {
   useEffect(() => {
     setDate(crawl.startsAt?.slice(0, 10) ?? "");
     setTime(crawl.startsAt?.slice(11, 16) ?? "");
-    setPerStop(crawl.minutesPerStop ?? DEFAULT_MINUTES_PER_STOP);
+    setPerStop(crawl.minutesPerStop);
   }, [crawl.startsAt, crawl.minutesPerStop]);
 
   const startsAt = date && time ? `${date}T${time}` : null;
@@ -65,7 +69,8 @@ export function ScheduleEditor({ crawl, editToken, onSaved }: Props) {
       <h2 className="section-title">When</h2>
       <form className="card schedule-card stack" onSubmit={save}>
         <p className="muted small">
-          Add a start time to see roughly when you'll reach each pub, and whether it'll be open then.
+          With a date, each pub shows its opening hours that day. Add a time at each pub as well to see roughly
+          when you'll reach each one, and whether it'll be open then.
         </p>
         <div className="schedule-row">
           <label className="field">
@@ -78,8 +83,15 @@ export function ScheduleEditor({ crawl, editToken, onSaved }: Props) {
           </label>
         </div>
         <label className="field">
-          <span>Time at each pub</span>
-          <select className="select" value={perStop} onChange={(e) => setPerStop(Number(e.target.value))}>
+          <span>
+              Time at each pub <span className="optional">(optional)</span>
+            </span>
+          <select
+            className="select"
+            value={perStop ?? ""}
+            onChange={(e) => setPerStop(e.target.value ? Number(e.target.value) : null)}
+          >
+            <option value="">{NO_DURATION_LABEL}</option>
             {DURATIONS.map((m) => (
               <option key={m} value={m}>
                 {durationLabel(m)}

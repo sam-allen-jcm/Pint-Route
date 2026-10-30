@@ -117,8 +117,11 @@ export interface Crawl {
   meetingPoint: MeetingPoint | null;
   /** Local start date/time "YYYY-MM-DDTHH:MM", or null if not set. */
   startsAt: string | null;
-  /** Minutes spent at each stop, for arrival estimates. */
-  minutesPerStop: number;
+  /**
+   * Minutes spent at each stop. When set (with a start time), each stop shows an
+   * estimated arrival; when null, stops show their opening hours for the day.
+   */
+  minutesPerStop: number | null;
 }
 
 export interface CreatedCrawl {
@@ -160,4 +163,3 @@ export interface StatsResponse {
 }
 
 export const MAX_STOPS = 25;
-export const DEFAULT_MINUTES_PER_STOP = 45;

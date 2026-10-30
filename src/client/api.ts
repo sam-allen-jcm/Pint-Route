@@ -136,7 +136,11 @@ export const api = {
   ) {
     return request<Crawl>(`/api/crawls/${slug}`, { method: "PATCH", body: JSON.stringify(patch), editToken });
   },
-  updateSchedule(slug: string, schedule: { startsAt: string | null; minutesPerStop: number }, editToken: string | null) {
+  updateSchedule(
+    slug: string,
+    schedule: { startsAt: string | null; minutesPerStop: number | null },
+    editToken: string | null,
+  ) {
     return request<Crawl>(`/api/crawls/${slug}`, { method: "PATCH", body: JSON.stringify(schedule), editToken });
   },
   updateCrawlArea(

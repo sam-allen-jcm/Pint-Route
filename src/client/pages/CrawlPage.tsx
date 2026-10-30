@@ -279,7 +279,7 @@ export function CrawlPage() {
     <div className="schedule-line">
       📅 {formatDay(start.date)} · start {formatClock(start)}
       {finish && ` · finish ~${formatClock(finish)}`}
-      {!routeFresh && stops.length > 1 && <span className="muted"> (updating…)</span>}
+      {timings && !routeFresh && stops.length > 1 && <span className="muted"> (updating…)</span>}
     </div>
   ) : null;
 
@@ -339,6 +339,7 @@ export function CrawlPage() {
                   canNote={canEdit && Boolean(user)}
                   onUpdate={(patch) => updateStop(stop, patch)}
                   timing={timings?.[i] ?? null}
+                  day={!timings && start ? start.date : null}
                 />
                 {i < stops.length - 1 && <LegRow leg={leg} failed={Boolean(routeError)} />}
               </li>

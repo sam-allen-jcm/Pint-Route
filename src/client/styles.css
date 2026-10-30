@@ -1147,13 +1147,24 @@ textarea:focus {
   gap: 12px;
   min-width: 0;
 }
+/* The crawl name gets priority (up to ~2/3 of the line); the town chip takes what's left. */
 .title-row h1,
 .title-form {
   min-width: 0;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
+  max-width: 68%;
+}
+@media (max-width: 480px) {
+  .title-row {
+    gap: 8px;
+  }
 }
 .area-chip {
-  flex: none;
+  /* Shrinks (with "…") before the crawl name does. */
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   border: none;
   background: rgb(255 255 255 / 0.12);
   color: #f6ead2;

@@ -5,7 +5,7 @@ import { api } from "../api";
 import { useAuth } from "../auth";
 import { SiteFooter } from "../components/SiteFooter";
 import { CityPicker, type PickedCity } from "../components/CityPicker";
-import { DURATIONS, durationLabel } from "../components/ScheduleEditor";
+import { DURATIONS, NO_DURATION_LABEL, durationLabel } from "../components/ScheduleEditor";
 import { countries, defaultCountry, rememberCountry } from "../countries";
 import { savedCrawls } from "../storage";
 
@@ -31,7 +31,7 @@ export function HomePage() {
   const [sessionToken] = useState(() => crypto.randomUUID());
   const [startDate, setStartDate] = useState("");
   const [startTime, setStartTime] = useState("");
-  /** "" = not chosen (uses the 45-minute default). */
+  /** "" = not set: pubs show their opening hours for the day instead of arrival estimates. */
   const [perStop, setPerStop] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -170,14 +170,16 @@ export function HomePage() {
               Time at each pub <span className="optional">(optional)</span>
             </span>
             <select className="select" value={perStop} onChange={(e) => setPerStop(e.target.value)}>
-              <option value="">Not sure yet (45 minutes)</option>
+              <option value="">{NO_DURATION_LABEL}</option>
               {DURATIONS.map((m) => (
                 <option key={m} value={m}>
                   {durationLabel(m)}
                 </option>
               ))}
             </select>
-            <span className="hint">Used to estimate when you'll reach each pub. You can change it later.</span>
+            <span className="hint">
+              Set it to estimate when you'll reach each pub. Left blank, each pub shows its opening hours that day.
+            </span>
           </label>
           <label className="field">
             <span>Crawl name</span>
