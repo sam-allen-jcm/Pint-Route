@@ -351,6 +351,7 @@ export function CrawlPage() {
         stops={stops}
         places={places}
         meetingPoint={meeting}
+        startsAt={crawl.startsAt}
         onMove={move}
         onRemove={remove}
         onEditMeeting={() => setEditingMeeting(true)}

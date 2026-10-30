@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { DEFAULT_MINUTES_PER_STOP, type Crawl } from "../../shared/types";
 import { api } from "../api";
 
@@ -18,6 +18,13 @@ export function ScheduleEditor({ crawl, editToken, onSaved }: Props) {
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Keep in step when the time is changed elsewhere (e.g. the meeting point sheet).
+  useEffect(() => {
+    setDate(crawl.startsAt?.slice(0, 10) ?? "");
+    setTime(crawl.startsAt?.slice(11, 16) ?? "");
+    setPerStop(crawl.minutesPerStop ?? DEFAULT_MINUTES_PER_STOP);
+  }, [crawl.startsAt, crawl.minutesPerStop]);
 
   const startsAt = date && time ? `${date}T${time}` : null;
   const dirty = startsAt !== crawl.startsAt || perStop !== crawl.minutesPerStop;
@@ -59,7 +66,7 @@ export function ScheduleEditor({ crawl, editToken, onSaved }: Props) {
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
           <label className="field">
-            <span>Start time</span>
+            <span>{crawl.meetingPoint ? "Meeting / start time" : "Start time"}</span>
             <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
           </label>
         </div>

@@ -121,12 +121,13 @@ export const api = {
     if (bias) params.set("bias", [bias.low.lat, bias.low.lng, bias.high.lat, bias.high.lng].map((n) => n.toFixed(4)).join(","));
     return request<{ places: CitySuggestion[] }>(`/api/places/anywhere?${params}`).then((r) => r.places);
   },
-  setMeetingPoint(slug: string, meetPlaceId: string | null, sessionToken: string | null, editToken: string | null) {
-    return request<Crawl>(`/api/crawls/${slug}`, {
-      method: "PATCH",
-      body: JSON.stringify({ meetPlaceId, ...(sessionToken ? { sessionToken } : {}) }),
-      editToken,
-    });
+  /** Any combination of crawl settings (meeting point, start time, …). */
+  patchCrawl(
+    slug: string,
+    patch: { meetPlaceId?: string | null; sessionToken?: string; startsAt?: string | null },
+    editToken: string | null,
+  ) {
+    return request<Crawl>(`/api/crawls/${slug}`, { method: "PATCH", body: JSON.stringify(patch), editToken });
   },
   updateSchedule(slug: string, schedule: { startsAt: string | null; minutesPerStop: number }, editToken: string | null) {
     return request<Crawl>(`/api/crawls/${slug}`, { method: "PATCH", body: JSON.stringify(schedule), editToken });

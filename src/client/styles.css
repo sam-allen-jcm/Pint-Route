@@ -1536,3 +1536,10 @@ textarea:focus {
     color: #f0b04a;
   }
 }
+.edit-sub {
+  display: block;
+  font-family: var(--sans);
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
