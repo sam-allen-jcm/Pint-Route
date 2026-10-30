@@ -125,4 +125,16 @@ export interface CrawlRoute {
   durationSeconds: number;
 }
 
+export interface StatsResponse {
+  /** YYYY-MM-DD, oldest first */
+  days: string[];
+  totals: { users: number; crawls: number; stops: number; visited: number; shared: number };
+  /** Daily counts per event, aligned with `days`. */
+  series: Record<string, number[]>;
+  /** What happened to crawls created in the period. */
+  funnel: { created: number; withStop: number; withTwo: number; shared: number; visited: number };
+  countries: { code: string; count: number }[];
+  areas: { name: string; count: number }[];
+}
+
 export const MAX_STOPS = 25;

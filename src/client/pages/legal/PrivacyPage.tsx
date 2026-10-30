@@ -86,6 +86,29 @@ export function PrivacyPage() {
           </tr>
           <tr>
             <td>
+              <strong>Usage statistics</strong>: anonymous daily counts of actions in the app (for example "12
+              crawls created today", or how many crawls were created per country), and how many times each crawl has
+              been opened through its share link
+            </td>
+            <td>
+              To understand how {service} is used and improve it. These counts aren't linked to you, your account, your
+              IP address or a particular crawl, except the share-link count stored on the crawl itself
+            </td>
+            <td>Legitimate interests (improving the service)</td>
+          </tr>
+          <tr>
+            <td>
+              <strong>Website analytics</strong>: pages visited, the site you came from, your browser, device type
+              and approximate country
+            </td>
+            <td>
+              To see how many people visit and how fast the site loads, using Cloudflare Web Analytics. It doesn't use
+              cookies, doesn't track you across other sites, and doesn't build a profile of you
+            </td>
+            <td>Legitimate interests (improving the service)</td>
+          </tr>
+          <tr>
+            <td>
               <strong>Cookie choices</strong>
             </td>
             <td>To remember which cookies you've allowed</td>
@@ -121,8 +144,8 @@ export function PrivacyPage() {
       <p>We use these service providers ("processors") to run {service}. They may only use your data to provide their service to us:</p>
       <ul>
         <li>
-          <strong>Cloudflare, Inc.</strong>: hosting, our database (Cloudflare D1), security and request logs. All
-          traffic to the site passes through Cloudflare.{" "}
+          <strong>Cloudflare, Inc.</strong>: hosting, our database (Cloudflare D1), security, request logs and
+          cookieless website analytics (Cloudflare Web Analytics). All traffic to the site passes through Cloudflare.{" "}
           <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noreferrer">
             Privacy policy
           </a>
@@ -179,6 +202,10 @@ export function PrivacyPage() {
         </li>
         <li>
           <strong>Password reset links</strong>: valid for 1 hour, and deleted once used or replaced.
+        </li>
+        <li>
+          <strong>Usage statistics</strong>: the anonymous daily counts are kept for as long as they're useful,
+          because they can't identify anyone.
         </li>
         <li>
           <strong>Server and security logs</strong>: kept for a short period (typically up to 30 days), unless we need

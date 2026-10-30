@@ -16,8 +16,8 @@ export function CookiesPage() {
       <h2>Our approach</h2>
       <p>
         {service} only uses cookies and storage that the app needs to work, or that remember choices you've made. We
-        don't use advertising cookies, and we don't currently use analytics cookies. If we ever add cookies that aren't
-        strictly necessary, we'll ask for your consent first and update this page.
+        don't use advertising cookies or analytics cookies. If we ever add cookies that aren't strictly necessary, we'll
+        ask for your consent first and update this page.
       </p>
 
       <h2>What we store</h2>
@@ -68,6 +68,17 @@ export function CookiesPage() {
         </tbody>
       </table>
 
+      <h2>Analytics without cookies</h2>
+      <p>
+        To understand how {service} is used, we count actions (such as crawls created or pubs added) on our own server
+        as anonymous daily totals, and we use{" "}
+        <a href="https://www.cloudflare.com/web-analytics/" target="_blank" rel="noreferrer">
+          Cloudflare Web Analytics
+        </a>{" "}
+        for visits and page speed. Neither sets cookies, stores anything on your device, or tracks you across other
+        websites. See our <Link to="/privacy">Privacy Policy</Link> for details.
+      </p>
+
       <h2>Third-party services</h2>
       <ul>
         <li>
@@ -80,7 +91,8 @@ export function CookiesPage() {
         </li>
         <li>
           <strong>Cloudflare</strong>: hosts the site and may set cookies needed for security, such as protecting
-          against bots. See{" "}
+          against bots. Its Web Analytics script (from <code>static.cloudflareinsights.com</code>) doesn't set
+          cookies. See{" "}
           <a href="https://developers.cloudflare.com/fundamentals/reference/policies-compliances/cloudflare-cookies/" target="_blank" rel="noreferrer">
             Cloudflare's cookies
           </a>

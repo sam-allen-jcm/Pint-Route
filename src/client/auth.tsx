@@ -6,6 +6,8 @@ import { savedCrawls } from "./storage";
 interface AuthState {
   /** undefined while the first check is in flight */
   user: User | null | undefined;
+  /** True for the owner account(s) allowed to see /stats. */
+  isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   /** Sets a new password from a reset link and logs in. */
@@ -28,31 +30,43 @@ async function claimDeviceCrawls() {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null | undefined>(undefined);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  const refresh = useCallback(async () => {
+    try {
+      const r = await api.me();
+      setUser(r.user);
+      setIsAdmin(r.isAdmin);
+    } catch {
+      setUser(null);
+      setIsAdmin(false);
+    }
+  }, []);
 
   useEffect(() => {
-    api
-      .me()
-      .then(setUser)
-      .catch(() => setUser(null));
-  }, []);
+    refresh();
+  }, [refresh]);
 
   const login = useCallback(async (email: string, password: string) => {
     const u = await api.login(email, password);
     await claimDeviceCrawls();
     setUser(u);
-  }, []);
+    await refresh();
+  }, [refresh]);
 
   const register = useCallback(async (name: string, email: string, password: string) => {
     const u = await api.register(name, email, password);
     await claimDeviceCrawls();
     setUser(u);
-  }, []);
+    await refresh();
+  }, [refresh]);
 
   const resetPassword = useCallback(async (token: string, password: string) => {
     const u = await api.resetPassword(token, password);
     await claimDeviceCrawls();
     setUser(u);
-  }, []);
+    await refresh();
+  }, [refresh]);
 
   const logout = useCallback(async () => {
     // Forget this device's edit tokens for crawls that live in the account, so
@@ -65,11 +79,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     await api.logout().catch(() => undefined);
     setUser(null);
+    setIsAdmin(false);
   }, []);
 
   const value = useMemo(
-    () => ({ user, login, register, resetPassword, logout }),
-    [user, login, register, resetPassword, logout],
+    () => ({ user, isAdmin, login, register, resetPassword, logout }),
+    [user, isAdmin, login, register, resetPassword, logout],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

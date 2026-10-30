@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { api } from "../api";
 
 interface Props {
   name: string;
@@ -12,7 +13,10 @@ export function ShareSheet({ name, slug, editToken, onClose }: Props) {
   const viewUrl = `${location.origin}/c/${slug}`;
   const editUrl = editToken ? `${viewUrl}#edit=${editToken}` : null;
 
+  useEffect(() => api.trackEvent("share_opened"), []);
+
   async function copy(text: string, which: "view" | "edit") {
+    api.trackEvent(which === "view" ? "share_link_shared" : "edit_link_copied");
     try {
       await navigator.clipboard.writeText(text);
       setCopied(which);
@@ -25,6 +29,7 @@ export function ShareSheet({ name, slug, editToken, onClose }: Props) {
     if (navigator.share) {
       try {
         await navigator.share({ title: `${name} · Pint Route`, text: `Join the crawl: ${name}`, url: viewUrl });
+        api.trackEvent("share_link_shared");
         return;
       } catch (err) {
         if ((err as Error).name === "AbortError") return;

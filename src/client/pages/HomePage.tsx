@@ -23,7 +23,7 @@ function summaryDetail(c: CrawlSummary): string {
 
 export function HomePage() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, isAdmin, logout } = useAuth();
   const [name, setName] = useState("");
   const [countryCode, setCountryCode] = useState(defaultCountry);
   const [city, setCity] = useState<PickedCity | null>(null);
@@ -88,6 +88,11 @@ export function HomePage() {
             <span className="account-name">
               Hi, <strong>{user.name}</strong>
             </span>
+            {isAdmin && (
+              <Link to="/stats" className="text-btn">
+                Stats
+              </Link>
+            )}
             <button className="text-btn" onClick={() => logout()}>
               Log out
             </button>

@@ -8,6 +8,7 @@ import { CookiesPage } from "./pages/legal/CookiesPage";
 import { PrivacyPage } from "./pages/legal/PrivacyPage";
 import { TermsPage } from "./pages/legal/TermsPage";
 import { ForgotPasswordPage, ResetPasswordPage } from "./pages/PasswordResetPages";
+import { StatsPage } from "./pages/StatsPage";
 import { CrawlPage } from "./pages/CrawlPage";
 import { NotFound } from "./pages/NotFound";
 import "./styles.css";
@@ -25,6 +26,7 @@ createRoot(document.getElementById("root")!).render(
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/cookies" element={<CookiesPage />} />
+          <Route path="/stats" element={<StatsPage />} />
           <Route path="/c/:slug" element={<CrawlPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

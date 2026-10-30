@@ -67,8 +67,15 @@ pages and say so in your reply:
 | Location ("near me" only) | Sent to Worker and Google, not stored; rounded copy cached ≤5 min | Transient |
 | IP address, request logs | Cloudflare (Workers observability logs); rate-limiter keys (IP, email) | Short-term |
 | Cookie consent | CookieYes cookie `cookieyes-consent` | 1 year |
+| Usage stats: anonymous daily counts per event (+ coarse detail such as a country code) | D1 `usage_daily` (written by `src/worker/usage.ts`) | Indefinite (not personal data) |
+| Share-link view count per crawl | D1 `crawls.shared_views` | With the crawl |
+| Website analytics (pages, referrer, browser, country; cookieless) | Cloudflare Web Analytics (auto-injected beacon) | Cloudflare's retention |
 
-**Processors:** Cloudflare (hosting, D1, logs), Google Maps Platform (Places, Routes, Maps JS,
+**Usage stats rule:** `usage_daily` must never hold user ids, emails, IPs, session ids or crawl
+slugs. If per-user analytics are ever wanted (e.g. PostHog), that needs CookieYes consent, a new
+processor and legal updates.
+
+**Processors:** Cloudflare (hosting, D1, logs, cookieless Web Analytics), Google Maps Platform (Places, Routes, Maps JS,
 photos; the browser loads Maps directly), Resend (transactional email), CookieYes (consent).
 Google Maps terms require us to bind users to the Google Maps/Google Earth Additional Terms and
 Google Privacy Policy. Keep that section in the Terms.

@@ -56,7 +56,10 @@ export function CrawlPage() {
   // Edit rights come from this device's edit token or from owning the crawl.
   const canEdit = Boolean(crawl?.canEdit);
 
-  const setTab = (t: Tab) => setParams(t === "stops" ? {} : { tab: t }, { replace: true });
+  const setTab = (t: Tab) => {
+    if (t === "map" && tab !== "map") api.trackEvent("map_viewed");
+    setParams(t === "stops" ? {} : { tab: t }, { replace: true });
+  };
 
   // ---- Load the crawl (and accept a private edit link if present) ----
   const loadSeq = useRef(0);

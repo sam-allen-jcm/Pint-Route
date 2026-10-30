@@ -1,5 +1,5 @@
 import { MAX_STOPS, type Bounds, type LatLng } from "../shared/types";
-import { forgotPassword, login, logout, me, register, requireUser, resetPassword } from "./auth";
+import { forgotPassword, getUser, login, logout, register, requireUser, resetPassword } from "./auth";
 import {
   addStop,
   claimCrawls,
@@ -16,6 +16,8 @@ import {
 import type { Env } from "./env";
 import { getPhotoUri, getPlace, isPlaceId, searchPlaces, suggestCities, walkingRoute } from "./google";
 import { HttpError, json, readJson } from "./http";
+import { getStats, isAdmin, requireAdmin } from "./stats";
+import { CLIENT_EVENTS, recordUsage } from "./usage";
 
 const SLUG = "([a-z0-9]{6,32})";
 
@@ -46,11 +48,15 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
   const path = url.pathname.replace(/\/+$/, "");
   const method = request.method;
   let m: RegExpMatchArray | null;
+  // Anonymous daily counts (see usage.ts); written after the response is sent.
+  const track = (event: string, detail = "") => ctx.waitUntil(recordUsage(env, event, detail));
 
   // ---- Places (live from Google, short-lived cache) ----
   if (path === "/api/places/search" && method === "GET") {
     const q = (url.searchParams.get("q") ?? "").slice(0, 120);
-    return json({ places: await searchPlaces(env, q, parseNear(url), parseBounds(url.searchParams.get("bias"))) });
+    const places = await searchPlaces(env, q, parseNear(url), parseBounds(url.searchParams.get("bias")));
+    track(q ? "search" : "search_near_me");
+    return json({ places });
   }
   if (path === "/api/places/cities" && method === "GET") {
     const q = (url.searchParams.get("q") ?? "").slice(0, 80);
@@ -74,14 +80,36 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
   }
 
   // ---- Accounts ----
-  if (path === "/api/auth/register" && method === "POST") return register(request, env, await readJson(request));
-  if (path === "/api/auth/login" && method === "POST") return login(request, env, await readJson(request));
-  if (path === "/api/auth/logout" && method === "POST") return logout(request, env);
-  if (path === "/api/auth/me" && method === "GET") return me(request, env);
-  if (path === "/api/auth/forgot" && method === "POST") {
-    return forgotPassword(request, env, ctx, await readJson(request));
+  if (path === "/api/auth/register" && method === "POST") {
+    const res = await register(request, env, await readJson(request));
+    track("signup");
+    return res;
   }
-  if (path === "/api/auth/reset" && method === "POST") return resetPassword(env, await readJson(request));
+  if (path === "/api/auth/login" && method === "POST") {
+    try {
+      const res = await login(request, env, await readJson(request));
+      track("login");
+      return res;
+    } catch (err) {
+      if (err instanceof HttpError && err.status === 401) track("login_failed");
+      throw err;
+    }
+  }
+  if (path === "/api/auth/logout" && method === "POST") return logout(request, env);
+  if (path === "/api/auth/me" && method === "GET") {
+    const user = await getUser(request, env);
+    return json({ user, isAdmin: isAdmin(user, env) });
+  }
+  if (path === "/api/auth/forgot" && method === "POST") {
+    const res = await forgotPassword(request, env, ctx, await readJson(request));
+    track("password_reset_requested");
+    return res;
+  }
+  if (path === "/api/auth/reset" && method === "POST") {
+    const res = await resetPassword(env, await readJson(request));
+    track("password_reset_completed");
+    return res;
+  }
   if (path === "/api/me/crawls" && method === "GET") {
     const user = await requireUser(request, env);
     return json({ crawls: await listMyCrawls(env, user.id) });
@@ -91,19 +119,54 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
     return json({ claimed: await claimCrawls(env, user.id, await readJson(request)) });
   }
 
+  // ---- Usage stats ----
+  if (path === "/api/events" && method === "POST") {
+    // Things only the browser sees (e.g. sharing). Unknown names are ignored.
+    const body = await readJson(request);
+    if (typeof body.event === "string" && CLIENT_EVENTS.has(body.event)) track(body.event);
+    return new Response(null, { status: 204 });
+  }
+  if (path === "/api/admin/stats" && method === "GET") {
+    await requireAdmin(request, env);
+    const days = [7, 30, 90].includes(Number(url.searchParams.get("days"))) ? Number(url.searchParams.get("days")) : 30;
+    return json(await getStats(env, days));
+  }
+
   // ---- Crawls (D1) ----
   if (path === "/api/crawls" && method === "POST") {
-    return json(await createCrawl(request, env, await readJson(request)), { status: 201 });
+    const body = await readJson(request);
+    const created = await createCrawl(request, env, body);
+    track("crawl_created", typeof body.countryCode === "string" ? body.countryCode.toUpperCase() : "");
+    if (body.cityPlaceId) track("crawl_created_with_town");
+    if (await getUser(request, env)) track("crawl_created_logged_in");
+    return json(created, { status: 201 });
   }
   if ((m = path.match(new RegExp(`^/api/crawls/${SLUG}$`)))) {
     const slug = m[1];
-    if (method === "GET") return json(await getCrawl(request, env, slug));
+    if (method === "GET") {
+      const crawl = await getCrawl(request, env, slug);
+      if (!crawl.canEdit) {
+        // Opened via a shared link by someone who can't edit it.
+        track("shared_view");
+        ctx.waitUntil(
+          env.DB.prepare("UPDATE crawls SET shared_views = shared_views + 1 WHERE slug = ?")
+            .bind(slug)
+            .run()
+            .catch(() => undefined),
+        );
+      }
+      return json(crawl);
+    }
     if (method === "PATCH") {
-      await updateCrawl(request, env, slug, await readJson(request));
+      const body = await readJson(request);
+      await updateCrawl(request, env, slug, body);
+      if ("name" in body) track("crawl_renamed");
+      if ("countryCode" in body) track("crawl_area_changed");
       return json(await getCrawl(request, env, slug));
     }
     if (method === "DELETE") {
       await deleteCrawl(request, env, slug);
+      track("crawl_deleted");
       return json({ ok: true });
     }
   }
@@ -116,17 +179,27 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
     return json(await walkingRoute(env, await getStopsForRoute(env, m[1], order)));
   }
   if ((m = path.match(new RegExp(`^/api/crawls/${SLUG}/stops$`))) && method === "POST") {
-    return json(await addStop(request, env, m[1], await readJson(request)), { status: 201 });
+    const stop = await addStop(request, env, m[1], await readJson(request));
+    track("stop_added");
+    return json(stop, { status: 201 });
   }
   if ((m = path.match(new RegExp(`^/api/crawls/${SLUG}/stops/order$`))) && method === "PUT") {
     await reorderStops(request, env, m[1], await readJson(request));
+    track("stops_reordered");
     return json(await getCrawl(request, env, m[1]));
   }
   if ((m = path.match(new RegExp(`^/api/crawls/${SLUG}/stops/(\\d+)$`)))) {
     const stopId = Number(m[2]);
-    if (method === "PATCH") return json(await updateStop(request, env, m[1], stopId, await readJson(request)));
+    if (method === "PATCH") {
+      const body = await readJson(request);
+      const stop = await updateStop(request, env, m[1], stopId, body);
+      if ("visitedOn" in body) track(body.visitedOn ? "stop_visited" : "stop_unvisited");
+      if ("note" in body) track("note_saved");
+      return json(stop);
+    }
     if (method === "DELETE") {
       await removeStop(request, env, m[1], stopId);
+      track("stop_removed");
       return json({ ok: true });
     }
   }

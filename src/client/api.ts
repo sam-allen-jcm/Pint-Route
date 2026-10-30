@@ -8,6 +8,7 @@ import type {
   LatLng,
   PlaceDetails,
   PlaceSummary,
+  StatsResponse,
   Stop,
   User,
 } from "../shared/types";
@@ -35,7 +36,19 @@ async function request<T>(path: string, init: RequestInit & { editToken?: string
 export const api = {
   // ---- accounts (session cookie, sent automatically) ----
   me() {
-    return request<{ user: User | null }>("/api/auth/me").then((r) => r.user);
+    return request<{ user: User | null; isAdmin: boolean }>("/api/auth/me");
+  },
+  stats(days: number) {
+    return request<StatsResponse>(`/api/admin/stats?days=${days}`);
+  },
+  /** Anonymous usage count for something only the browser sees. Never blocks or throws. */
+  trackEvent(event: "share_opened" | "share_link_shared" | "edit_link_copied" | "map_viewed") {
+    fetch("/api/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event }),
+      keepalive: true,
+    }).catch(() => undefined);
   },
   register(name: string, email: string, password: string) {
     return request<{ user: User }>("/api/auth/register", {

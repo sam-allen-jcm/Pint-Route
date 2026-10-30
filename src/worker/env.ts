@@ -8,6 +8,8 @@ export interface Env {
   AUTH_IP_LIMITER?: RateLimit;
   /** Secret: Resend API key for outgoing email. */
   RESEND_API_KEY?: string;
+  /** Secret: comma-separated emails allowed to open the /stats dashboard. */
+  ADMIN_EMAILS?: string;
   /** Public address of the app, used in emailed links, e.g. "https://pintroute.com". */
   APP_URL?: string;
   /** Sender for outgoing email, e.g. "Pint Route <noreply@pintroute.com>". */

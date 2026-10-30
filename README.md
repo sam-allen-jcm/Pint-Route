@@ -78,6 +78,7 @@ that `wrangler d1 migrations apply` and `wrangler deploy` both pick up automatic
 | Name | Kind | Where to set it | Notes |
 | --- | --- | --- | --- |
 | `GOOGLE_PLACES_API_KEY` | **Runtime secret** | Worker → Settings → **Variables and Secrets** → Add → type *Secret* (or `npx wrangler secret put GOOGLE_PLACES_API_KEY`) | Server-side key. Never exposed to the browser. |
+| `ADMIN_EMAILS` | **Runtime secret** | Worker → Settings → **Variables and Secrets** → Add → type *Secret* | Comma-separated emails allowed to open the private `/stats` dashboard (must be registered accounts). |
 | `RESEND_API_KEY` | **Runtime secret** | Worker → Settings → **Variables and Secrets** → Add → type *Secret* | Resend API key for password-reset emails. |
 | `VITE_GOOGLE_MAPS_KEY` | **Build variable** | Worker → Settings → **Build** → **Variables and secrets** | Inlined into the JS bundle at build time, so it must be a *build* variable. It's public, so restrict it by HTTP referrer. |
 | `VITE_GOOGLE_MAPS_MAP_ID` | Build variable (optional) | Same as above | Defaults to `DEMO_MAP_ID`. |
@@ -147,6 +148,18 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
   When the stops are under **200 m** apart and Google's route is more than **twice** the
   straight-line distance, the leg is replaced by the direct way across (straight line, ×1.2
   for the distance, at 1.3 m/s), labelled "just across the road".
+
+### Analytics
+
+- **Cloudflare Web Analytics** (enabled in the dashboard with automatic injection) covers visitors,
+  page views, referrers, countries, devices and page speed. It's cookieless.
+- **Usage events**: the Worker counts actions as anonymous daily totals in D1 (`usage_daily`):
+  crawls created (by country), pubs added/removed/ticked off, searches, shared crawls opened,
+  sign-ups, log-ins, password resets. Actions only the browser sees (share sheet, map tab) are
+  reported via `POST /api/events` (allow-listed names only). No user, IP or crawl identifiers
+  are stored.
+- **`/stats`**: a private dashboard (tiles, new-crawl funnel, daily charts, top countries and
+  towns) for accounts listed in the `ADMIN_EMAILS` secret.
 
 ### Legal and compliance
 
@@ -225,6 +238,8 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 | `DELETE /api/crawls/:slug` | edit | Delete crawl |
 | `GET /api/crawls/:slug/route?stops=1,2,3` | – | Walking route through the given stop ids in that order (defaults to the saved order): per-leg time, distance and polyline |
 | `POST /api/crawls/:slug/stops` | edit | Add a stop `{ placeId }` |
+| `POST /api/events` | – | `{ event }` anonymous count for browser-only actions (allow-listed) |
+| `GET /api/admin/stats?days=7\|30\|90` | admin | Usage dashboard data |
 | `PUT /api/crawls/:slug/stops/order` | edit | Reorder `{ stopIds: [...] }` |
 | `PATCH /api/crawls/:slug/stops/:id` | edit | `{ visitedOn: "YYYY-MM-DD" \| null, note }` |
 | `DELETE /api/crawls/:slug/stops/:id` | edit | Remove a stop |
