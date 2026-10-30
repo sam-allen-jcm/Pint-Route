@@ -62,7 +62,7 @@ pages and say so in your reply:
 | Account: email, display name, PBKDF2 password hash, terms version and acceptance time | D1 `users` | Until deletion is requested (by email; no self-serve deletion yet) |
 | Sessions (SHA-256 of cookie token, expiry) | D1 `sessions`, cookie `pr_session` | 30 days / logout / password reset |
 | Password reset tokens (SHA-256, expiry) | D1 `password_resets` | 1 hour validity; deleted when used or superseded |
-| Crawls: name, Place IDs, order, visited dates, notes (only logged-in editors can write them), country code, area Place ID, meeting point Place ID, start date/time, minutes per stop, owner | D1 `crawls`, `stops` | Until deleted. Public to anyone with the share link |
+| Crawls: name, Place IDs, order, visited dates, notes (only logged-in editors can write them), country code, area Place ID, meeting point Place ID, start date/time, minutes per stop, owner | D1 `crawls`, `stops` | Until deleted. Public to anyone with the share link. Link previews (`src/worker/sharePreview.ts`) expose the name, town, pub count and start date/time to messaging apps |
 | Guest edit tokens, last country | Browser localStorage `pint-route:crawls`, `pint-route:last-country` | Until cleared |
 | Location, "near me" | Sent to Worker and Google, not stored; rounded copy cached ≤5 min | Transient |
 | Location, "Show my location" (live dot on map) | Browser only (`watchPosition`); never sent to the Worker. Google sees map tile requests for the area shown | Until switched off / page closed |

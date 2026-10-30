@@ -16,8 +16,11 @@
   // to the Worker first; every other unknown path falls back to index.html so
   // client-side routes like /c/<slug> work on refresh.
   "assets": {
+    // Lets the Worker fetch the app's own files (env.ASSETS), e.g. index.html for /c/<slug>.
+    "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
+    // /c/* too, so shared crawl links get the crawl's name in their link preview.
+    "run_worker_first": ["/api/*", "/c/*"]
   },
 
   "d1_databases": [

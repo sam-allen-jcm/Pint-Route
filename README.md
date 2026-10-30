@@ -171,7 +171,10 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
   the crawl name on phones. Its contents line up with the page content (same max width as the
   list + map). The browser tab reads "<crawl name> · Pint Route".
 - Link previews (WhatsApp, iMessage, Slack…) use Open Graph tags in `index.html` and
-  `public/og-image.png` (1200×630).
+  `public/og-image.png` (1200×630). For `/c/<slug>` the Worker runs first (`run_worker_first`)
+  and rewrites the tags with `HTMLRewriter` (`src/worker/sharePreview.ts`). The title becomes
+  "<crawl name> · Pint Route" and the description e.g. "A pub crawl in London · 8 pubs ·
+  Sat 31 Oct, 13:00". Unknown crawls get the generic preview.
 
 ### Meeting point
 

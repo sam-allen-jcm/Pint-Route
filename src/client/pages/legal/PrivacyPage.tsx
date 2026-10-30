@@ -146,6 +146,12 @@ export function PrivacyPage() {
         want the people you share it with to see. Anyone with the private edit link can change the crawl, so only share
         that with people you trust.
       </p>
+      <p>
+        When you paste a crawl's link into a messaging app or social network (for example WhatsApp, iMessage or
+        Slack), that service fetches a <strong>link preview</strong> from us showing the crawl's name, its town, how
+        many pubs it has and its date and start time. That preview is visible to everyone in the conversation, and the
+        service handles it under its own privacy policy.
+      </p>
 
       <h2>4. Who we share data with</h2>
       <p>We use these service providers ("processors") to run {service}. They may only use your data to provide their service to us:</p>

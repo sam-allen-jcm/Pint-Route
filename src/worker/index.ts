@@ -17,6 +17,7 @@ import type { Env } from "./env";
 import { getPhotoUri, getPlace, isPlaceId, searchPlaces, suggestCities, suggestPlaces, walkingRoute } from "./google";
 import { HttpError, json, readJson } from "./http";
 import { getStats, isAdmin, requireAdmin } from "./stats";
+import { crawlPage } from "./sharePreview";
 import { CLIENT_EVENTS, recordUsage } from "./usage";
 
 const SLUG = "([a-z0-9]{6,32})";
@@ -226,6 +227,9 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
 export default {
   async fetch(request, env, ctx): Promise<Response> {
     const url = new URL(request.url);
+    // Shared crawl links: put the crawl's name into the link preview tags.
+    const crawlPath = url.pathname.match(/^\/c\/([a-z0-9]{6,32})\/?$/);
+    if (crawlPath && request.method === "GET") return crawlPage(request, env, crawlPath[1]);
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
     try {
       return await handleApi(request, env, ctx, url);
