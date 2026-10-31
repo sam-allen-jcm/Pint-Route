@@ -8,6 +8,7 @@ import type {
   LatLng,
   PlaceDetails,
   PlaceSummary,
+  GoogleQuotaResponse,
   StatsResponse,
   Stop,
   User,
@@ -42,6 +43,9 @@ export const api = {
   },
   stats(days: number) {
     return request<StatsResponse>(`/api/admin/stats?days=${days}`);
+  },
+  googleQuotas() {
+    return request<GoogleQuotaResponse>("/api/admin/google-quotas");
   },
   /** Anonymous usage count for something only the browser sees. Never blocks or throws. */
   trackEvent(event: "share_opened" | "share_link_shared" | "edit_link_copied" | "map_viewed" | "my_location_on") {

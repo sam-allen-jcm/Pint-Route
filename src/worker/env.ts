@@ -12,6 +12,11 @@ export interface Env {
   CREATE_LIMITER?: RateLimit;
   /** Secret: Resend API key for outgoing email. */
   RESEND_API_KEY?: string;
+  /**
+   * Secret (optional): a Google Cloud service-account key (the whole JSON file) with the
+   * "Monitoring Viewer" role, so /stats can show live Google Maps usage and daily limits.
+   */
+  GOOGLE_CLOUD_SA_KEY?: string;
   /** Secret: comma-separated emails allowed to open the /stats dashboard. */
   ADMIN_EMAILS?: string;
   /** Public address of the app, used in emailed links, e.g. "https://pintroute.com". */

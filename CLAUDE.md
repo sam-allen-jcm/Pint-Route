@@ -80,6 +80,8 @@ processor and legal updates.
 
 **Processors:** Cloudflare (hosting, D1, logs, cookieless Web Analytics), Google Maps Platform (Places, Routes, Maps JS,
 photos; the browser loads Maps directly), Resend (transactional email), CookieYes (consent).
+The optional `GOOGLE_CLOUD_SA_KEY` (Monitoring Viewer only) lets `/stats` read aggregate Google
+API usage and quotas from Cloud Monitoring (`src/worker/googleCloud.ts`); no user data goes to Google there.
 Google Maps terms require us to bind users to the Google Maps/Google Earth Additional Terms and
 Google Privacy Policy. Keep that section in the Terms.
 

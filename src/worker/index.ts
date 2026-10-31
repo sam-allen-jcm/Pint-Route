@@ -27,6 +27,7 @@ import type { Env } from "./env";
 import { getPhotoUri, getPlace, isPlaceId, searchPlaces, suggestCities, suggestPlaces, walkingRoute } from "./google";
 import { HttpError, json, readJson } from "./http";
 import { getStats, isAdmin, requireAdmin } from "./stats";
+import { getGoogleQuotas } from "./googleCloud";
 import { crawlPage } from "./sharePreview";
 import { CLIENT_EVENTS, recordUsage } from "./usage";
 
@@ -169,6 +170,10 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
     await requireAdmin(request, env);
     const days = [7, 30, 90].includes(Number(url.searchParams.get("days"))) ? Number(url.searchParams.get("days")) : 30;
     return json(await getStats(env, days));
+  }
+  if (path === "/api/admin/google-quotas" && method === "GET") {
+    await requireAdmin(request, env);
+    return json(await getGoogleQuotas(env));
   }
 
   // ---- Crawls (D1) ----

@@ -166,4 +166,19 @@ export interface StatsResponse {
   areas: { name: string; count: number }[];
 }
 
+/** Today's Google Maps Platform usage and daily limits, read live from Google Cloud Monitoring. */
+export interface GoogleQuotaResponse {
+  /** False until the GOOGLE_CLOUD_SA_KEY secret is added. */
+  configured: boolean;
+  /** Set when Google Cloud couldn't be read (permissions, API not enabled, …). */
+  error?: string;
+  projectId?: string;
+  /** Google's day starts at midnight Pacific Time: this is that moment, as an ISO timestamp. */
+  dayStart?: string;
+  /** Daily limits, with how much of each has been used today. limit null = unlimited. */
+  limits: { service: string; quota: string; limitName: string; limit: number | null; usedToday: number }[];
+  /** Requests made today, per API method (including the browser's map loads). */
+  requests: { service: string; method: string; count: number; errors: number }[];
+}
+
 export const MAX_STOPS = 25;

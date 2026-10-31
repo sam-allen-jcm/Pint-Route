@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import type { StatsResponse } from "../../shared/types";
+import type { GoogleQuotaResponse, StatsResponse } from "../../shared/types";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { countries } from "../countries";
@@ -43,7 +43,7 @@ const EVENT_LABELS: Record<string, string> = {
   share_link_shared: "Share link sent/copied",
   edit_link_copied: "Private edit link copied",
   map_viewed: "Map tab opened",
-  my_location_on: "\"Show my location\" turned on",
+  my_location_on: '"Show my location" turned on',
   signup: "Sign-up",
   signup_total: "New accounts",
   login: "Log in",
@@ -137,6 +137,8 @@ export function StatsPage() {
             </div>
           </section>
 
+          <GoogleUsage />
+
           <section className="card stats-card">
             <h2 className="stats-h2">What happens to new crawls</h2>
             <p className="muted small">Crawls created in the last {days} days, and how far they got.</p>
@@ -164,7 +166,10 @@ export function StatsPage() {
             <section className="card stats-card">
               <h2 className="stats-h2">Top countries</h2>
               <p className="muted small">New crawls, last {days} days</p>
-              <RankTable rows={stats.countries.map((c) => [countryName.get(c.code) ?? c.code, c.count])} empty="No crawls yet" />
+              <RankTable
+                rows={stats.countries.map((c) => [countryName.get(c.code) ?? c.code, c.count])}
+                empty="No crawls yet"
+              />
             </section>
             <section className="card stats-card">
               <h2 className="stats-h2">Top towns</h2>
@@ -209,7 +214,10 @@ function Funnel({ steps }: { steps: [string, number][] }) {
           <li key={label} className="funnel-row">
             <span className="funnel-label">{label}</span>
             <span className="funnel-track">
-              <span className="funnel-bar" style={{ width: `${top ? Math.max((value / top) * 100, value ? 1.5 : 0) : 0}%` }} />
+              <span
+                className="funnel-bar"
+                style={{ width: `${top ? Math.max((value / top) * 100, value ? 1.5 : 0) : 0}%` }}
+              />
               <span className="funnel-value">
                 {fmt(value)}
                 {label !== steps[0][0] && top > 0 && <span className="muted"> · {pct}%</span>}
@@ -283,5 +291,107 @@ function RankTable({ rows, empty }: { rows: [string, number][]; empty: string })
         ))}
       </tbody>
     </table>
+  );
+}
+
+/** Today's Google Maps usage against the daily limits set in Google Cloud. */
+function GoogleUsage() {
+  const [data, setData] = useState<GoogleQuotaResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .googleQuotas()
+      .then((d) => !cancelled && setData(d))
+      .catch((err: Error) => !cancelled && setError(err.message));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const resets = data?.dayStart
+    ? new Date(new Date(data.dayStart).getTime() + 86_400_000).toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    : null;
+
+  return (
+    <section className="card stats-card">
+      <h2 className="stats-h2">Google Maps today</h2>
+      {error ? (
+        <p className="error small">{error}</p>
+      ) : !data ? (
+        <p className="muted small">Checking Google Cloud…</p>
+      ) : !data.configured && !data.error ? (
+        <p className="muted small">
+          Not connected yet. Add a Google Cloud service-account key as the <code>GOOGLE_CLOUD_SA_KEY</code> secret (see
+          the README) to see live usage and daily limits here.
+        </p>
+      ) : data.error ? (
+        <p className="error small">{data.error}</p>
+      ) : (
+        <>
+          <p className="muted small">
+            Live from Google Cloud (project <code>{data.projectId}</code>, refreshed every 5 minutes). Google's day
+            resets at midnight Pacific Time{resets && <> ({resets} your time)</>}.
+          </p>
+          <h3 className="quota-h3">Daily limits</h3>
+          {data.limits.length === 0 ? (
+            <p className="muted small">
+              No daily limits found. Set them in Google Cloud under <strong>IAM &amp; Admin → Quotas</strong> (filter by
+              each Maps API, then edit the "per day" quotas).
+            </p>
+          ) : (
+            <ul className="quota-list">
+              {data.limits.map((q) => {
+                const pct = q.limit ? Math.min(100, (q.usedToday / q.limit) * 100) : 0;
+                const level = pct >= 90 ? "danger" : pct >= 70 ? "warn" : "";
+                return (
+                  <li key={`${q.service}|${q.quota}|${q.limitName}`} className="quota-row">
+                    <div className="quota-head">
+                      <span>
+                        <strong>{q.service}</strong> · {q.quota}
+                      </span>
+                      <span className="quota-num">
+                        {fmt(q.usedToday)} / {q.limit === null ? "unlimited" : fmt(q.limit)}
+                        {q.limit !== null && <span className="muted"> · {Math.round(pct)}%</span>}
+                      </span>
+                    </div>
+                    {q.limit !== null && (
+                      <div className="quota-track" role="presentation">
+                        <span
+                          className={`quota-bar ${level}`}
+                          style={{ width: `${Math.max(pct, q.usedToday ? 1 : 0)}%` }}
+                        />
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <h3 className="quota-h3">Requests today</h3>
+          {data.requests.length === 0 ? (
+            <p className="muted small">No requests yet today.</p>
+          ) : (
+            <table className="rank-table">
+              <tbody>
+                {data.requests.map((r) => (
+                  <tr key={`${r.service}|${r.method}`}>
+                    <td>
+                      {r.service} · {r.method}
+                      {r.errors > 0 && <span className="error small"> ({fmt(r.errors)} failed)</span>}
+                    </td>
+                    <td className="num">{fmt(r.count)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </>
+      )}
+    </section>
   );
 }

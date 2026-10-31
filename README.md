@@ -35,6 +35,24 @@ You need **two separate API keys**:
 > The walking route uses the **Routes API** (`computeRoutes`, `WALK`) from the Worker,
 > because the legacy Directions API can't be enabled on new Google Cloud projects.
 
+### Google usage and daily limits on /stats (optional)
+
+The "Google Maps today" card on `/stats` reads today's request counts and your **per-day
+quota limits** live from Google Cloud Monitoring (refreshed every 5 minutes). Only aggregate
+counts are read, nothing about users. To connect it:
+
+1. Google Cloud console → **APIs & Services → Library** → enable **Cloud Monitoring API**.
+2. **IAM & Admin → Service Accounts → Create service account** (e.g. `pint-route-stats`).
+   Grant it one role: **Monitoring Viewer**. Nothing else.
+3. Open the account → **Keys → Add key → Create new key → JSON**. A `.json` file downloads.
+4. Cloudflare → Worker → Settings → **Variables and Secrets** → Add → type *Secret*, name
+   `GOOGLE_CLOUD_SA_KEY`, and paste the **whole contents** of that file. Then delete the file.
+5. Daily limits: **IAM & Admin → Quotas & System Limits**, filter by *Places API (New)*,
+   *Routes API* or *Maps JavaScript API*, tick the "per day" quotas and **Edit**. Any per-day
+   limit you set shows on `/stats` with a bar (amber at 70%, red at 90%).
+
+Google's quota day resets at midnight Pacific Time, so the card shows when that is locally.
+
 The map uses Advanced Markers, which need a Map ID. It defaults to Google's `DEMO_MAP_ID`.
 To use your own styled map, set `VITE_GOOGLE_MAPS_MAP_ID` (optional).
 
@@ -79,6 +97,7 @@ that `wrangler d1 migrations apply` and `wrangler deploy` both pick up automatic
 | --- | --- | --- | --- |
 | `GOOGLE_PLACES_API_KEY` | **Runtime secret** | Worker → Settings → **Variables and Secrets** → Add → type *Secret* (or `npx wrangler secret put GOOGLE_PLACES_API_KEY`) | Server-side key. Never exposed to the browser. |
 | `ADMIN_EMAILS` | **Runtime secret** | Worker → Settings → **Variables and Secrets** → Add → type *Secret* | Comma-separated emails allowed to open the private `/stats` dashboard (must be registered accounts). |
+| `GOOGLE_CLOUD_SA_KEY` | Runtime secret (optional) | Worker → Settings → **Variables and Secrets** → Add → type *Secret* | Whole JSON key of a Google Cloud service account with only **Monitoring Viewer**, for the Google usage card on `/stats`. See "Google usage and daily limits". |
 | `RESEND_API_KEY` | **Runtime secret** | Worker → Settings → **Variables and Secrets** → Add → type *Secret* | Resend API key for password-reset emails. |
 | `VITE_GOOGLE_MAPS_KEY` | **Build variable** | Worker → Settings → **Build** → **Variables and secrets** | Inlined into the JS bundle at build time, so it must be a *build* variable. It's public, so restrict it by HTTP referrer. |
 | `VITE_GOOGLE_MAPS_MAP_ID` | Build variable (optional) | Same as above | Defaults to `DEMO_MAP_ID`. |
@@ -299,6 +318,7 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 | `POST /api/crawls/:slug/stops` | edit | Add a stop `{ placeId }` |
 | `POST /api/events` | – | `{ event }` anonymous count for browser-only actions (allow-listed) |
 | `GET /api/admin/stats?days=7\|30\|90` | admin | Usage dashboard data |
+| `GET /api/admin/google-quotas` | admin | Today's Google Maps requests and per-day limits from Cloud Monitoring |
 | `PUT /api/crawls/:slug/stops/order` | edit | Reorder `{ stopIds: [...] }` |
 | `PATCH /api/crawls/:slug/stops/:id` | edit | `{ visitedOn: "YYYY-MM-DD" \| null, note }` |
 | `DELETE /api/crawls/:slug/stops/:id` | edit | Remove a stop |
