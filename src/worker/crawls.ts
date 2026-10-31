@@ -3,6 +3,7 @@ import type { Env } from "./env";
 import { countryName, countryPlaceId, getArea, getMeetingPoint, getPlace, isPlaceId } from "./google";
 import { getUser } from "./auth";
 import { randomToken, sha256 } from "./crypto";
+import { containsLink } from "../shared/content";
 import { HttpError } from "./http";
 
 interface CrawlRow {
@@ -62,6 +63,7 @@ function cleanName(name: unknown): string {
   const trimmed = name.trim().replace(/\s+/g, " ");
   if (!trimmed) throw new HttpError(400, "Name is required");
   if (trimmed.length > 80) throw new HttpError(400, "Name must be 80 characters or fewer");
+  if (containsLink(trimmed)) throw new HttpError(400, "Crawl names can't contain web links");
   return trimmed;
 }
 
@@ -69,6 +71,27 @@ async function loadCrawl(env: Env, slug: string): Promise<CrawlRow> {
   const row = await env.DB.prepare("SELECT * FROM crawls WHERE slug = ?").bind(slug).first<CrawlRow>();
   if (!row) throw new HttpError(404, "Crawl not found");
   return row;
+}
+
+/** Whether the crawl's owner has verified their email (crawls from before accounts count as verified). */
+async function ownerVerified(env: Env, crawl: CrawlRow): Promise<boolean> {
+  if (crawl.owner_id === null) return true;
+  const row = await env.DB.prepare("SELECT email_verified_at FROM users WHERE id = ?")
+    .bind(crawl.owner_id)
+    .first<{ email_verified_at: string | null }>();
+  return Boolean(row?.email_verified_at);
+}
+
+/**
+ * Shared links only work once the owner has verified their email. Editors can
+ * always see their own crawl.
+ */
+async function assertVisible(request: Request, env: Env, crawl: CrawlRow): Promise<boolean> {
+  const verified = await ownerVerified(env, crawl);
+  if (!verified && !(await hasEditAccess(request, env, crawl))) {
+    throw new HttpError(403, "This crawl isn't available yet", "unverified");
+  }
+  return verified;
 }
 
 async function tokenMatches(request: Request, crawl: CrawlRow): Promise<boolean> {
@@ -156,8 +179,10 @@ export async function createCrawl(
   const name = cleanName(body.name);
   const startsAt = cleanStartsAt(body.startsAt);
   const minutesPerStop = cleanMinutesPerStop(body.minutesPerStop);
-  const { countryCode, areaPlaceId } = await resolveArea(env, body);
+  // An account is needed to create a crawl (keeps out spam); sharing also needs a verified email.
   const user = await getUser(request, env);
+  if (!user) throw new HttpError(401, "Create a free account (or log in) to save your crawl");
+  const { countryCode, areaPlaceId } = await resolveArea(env, body);
   const editToken = randomToken();
   const hash = await sha256(editToken);
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -167,7 +192,7 @@ export async function createCrawl(
         `INSERT INTO crawls (slug, name, edit_token_hash, owner_id, country_code, area_place_id, starts_at, minutes_per_stop)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-        .bind(slug, name, hash, user?.id ?? null, countryCode, areaPlaceId, startsAt, minutesPerStop)
+        .bind(slug, name, hash, user.id, countryCode, areaPlaceId, startsAt, minutesPerStop)
         .run();
       return { slug, editToken };
     } catch (err) {
@@ -179,7 +204,9 @@ export async function createCrawl(
 
 export async function getCrawl(request: Request, env: Env, slug: string): Promise<Crawl> {
   const crawl = await loadCrawl(env, slug);
+  const verified = await assertVisible(request, env, crawl);
   return {
+    ownerVerified: verified,
     slug: crawl.slug,
     name: crawl.name,
     createdAt: crawl.created_at,
@@ -269,8 +296,10 @@ export async function getStopsForRoute(
   env: Env,
   slug: string,
   order: number[] | null,
+  request: Request,
 ): Promise<{ meetPlaceId: string | null; stops: Stop[] }> {
   const crawl = await loadCrawl(env, slug);
+  await assertVisible(request, env, crawl);
   const stops = await listStops(env, crawl.id);
   const meetPlaceId = crawl.meet_place_id;
   if (!order) return { meetPlaceId, stops };
@@ -415,6 +444,7 @@ export async function updateStop(
     const n = body.note;
     if (n !== null && typeof n !== "string") throw new HttpError(400, "note must be text or null");
     if (typeof n === "string" && n.length > 500) throw new HttpError(400, "Notes are limited to 500 characters");
+    if (typeof n === "string" && containsLink(n)) throw new HttpError(400, "Notes can't contain web links");
     sets.push("note = ?");
     values.push(typeof n === "string" && n.trim() ? n.trim() : null);
   }

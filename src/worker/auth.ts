@@ -6,10 +6,11 @@
 // - Sessions: a random token in an HttpOnly, Secure, SameSite=Lax cookie. Only
 //   its SHA-256 is stored in D1, so a database leak doesn't leak live sessions.
 
+import { containsLink } from "../shared/content";
 import { TERMS_VERSION } from "../shared/legal";
 import type { User } from "../shared/types";
 import { fromBase64Url, randomToken, sha256, timingSafeEqual, toBase64Url } from "./crypto";
-import { passwordResetEmail, sendEmail } from "./email";
+import { passwordResetEmail, sendEmail, verifyEmailEmail } from "./email";
 import type { Env } from "./env";
 import { HttpError, json } from "./http";
 
@@ -22,13 +23,17 @@ interface UserRow {
   id: number;
   email: string;
   display_name: string;
+  email_verified_at: string | null;
   password_hash: string;
 }
 
-const toUser = (r: { id: number; email: string; display_name: string }): User => ({
+type UserFields = { id: number; email: string; display_name: string; email_verified_at: string | null };
+
+const toUser = (r: UserFields): User => ({
   id: r.id,
   email: r.email,
   name: r.display_name,
+  emailVerified: Boolean(r.email_verified_at),
 });
 
 // ---------- passwords ----------
@@ -77,6 +82,7 @@ function cleanDisplayName(v: unknown): string {
   const name = typeof v === "string" ? v.trim().replace(/\s+/g, " ") : "";
   if (!name) throw new HttpError(400, "Enter your name");
   if (name.length > 40) throw new HttpError(400, "Name must be 40 characters or fewer");
+  if (containsLink(name)) throw new HttpError(400, "Names can't contain web links");
   return name;
 }
 
@@ -134,11 +140,11 @@ export function getUser(request: Request, env: Env): Promise<User | null> {
       const token = readCookie(request, COOKIE);
       if (!token) return null;
       const row = await env.DB.prepare(
-        `SELECT u.id, u.email, u.display_name FROM sessions s JOIN users u ON u.id = s.user_id
+        `SELECT u.id, u.email, u.display_name, u.email_verified_at FROM sessions s JOIN users u ON u.id = s.user_id
          WHERE s.id = ? AND s.expires_at > ?`,
       )
         .bind(await sha256(token), new Date().toISOString())
-        .first<{ id: number; email: string; display_name: string }>();
+        .first<UserFields>();
       return row ? toUser(row) : null;
     })();
     userCache.set(request, pending);
@@ -154,7 +160,12 @@ export async function requireUser(request: Request, env: Env): Promise<User> {
 
 // ---------- endpoints ----------
 
-export async function register(request: Request, env: Env, body: Record<string, unknown>): Promise<Response> {
+export async function register(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+  body: Record<string, unknown>,
+): Promise<Response> {
   const email = cleanEmail(body.email);
   const password = cleanPassword(body.password, true);
   const name = cleanDisplayName(body.name);
@@ -168,12 +179,13 @@ export async function register(request: Request, env: Env, body: Record<string, 
 
   const row = await env.DB.prepare(
     `INSERT INTO users (email, display_name, password_hash, terms_version, terms_accepted_at)
-     VALUES (?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) RETURNING id, email, display_name`,
+     VALUES (?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) RETURNING id, email, display_name, email_verified_at`,
   )
     .bind(email, name, await hashPassword(password), TERMS_VERSION)
-    .first<{ id: number; email: string; display_name: string }>();
+    .first<UserFields>();
   if (!row) throw new HttpError(500, "Could not create account");
 
+  ctx.waitUntil(sendVerification(env, request, row).catch((err) => console.error("verification email failed", err)));
   return json({ user: toUser(row) }, { status: 201, headers: { "Set-Cookie": await startSession(env, row.id) } });
 }
 
@@ -182,7 +194,7 @@ export async function login(request: Request, env: Env, body: Record<string, unk
   const password = cleanPassword(body.password, false);
   await rateLimit(request, env, "login", email);
 
-  const row = await env.DB.prepare("SELECT id, email, display_name, password_hash FROM users WHERE email = ?")
+  const row = await env.DB.prepare("SELECT id, email, display_name, email_verified_at, password_hash FROM users WHERE email = ?")
     .bind(email)
     .first<UserRow>();
   const ok = await verifyPassword(password, row?.password_hash ?? DUMMY_HASH);
@@ -226,7 +238,7 @@ export async function forgotPassword(
     (async () => {
       const user = await env.DB.prepare("SELECT id, email, display_name FROM users WHERE email = ?")
         .bind(email)
-        .first<{ id: number; email: string; display_name: string }>();
+        .first<UserFields>();
       if (!user) return;
       const token = randomToken();
       const expires = new Date(Date.now() + RESET_MINUTES * 60_000).toISOString();
@@ -273,16 +285,80 @@ export async function resetPassword(env: Env, body: Record<string, unknown>): Pr
   if (!claimed.meta.changes) throw invalid;
 
   await env.DB.batch([
-    env.DB.prepare("UPDATE users SET password_hash = ? WHERE id = ?").bind(await hashPassword(password), reset.user_id),
+    // A used reset link also proves they own the inbox.
+    env.DB.prepare(
+      "UPDATE users SET password_hash = ?, email_verified_at = COALESCE(email_verified_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) WHERE id = ?",
+    ).bind(await hashPassword(password), reset.user_id),
     // Whoever knew the old password is signed out everywhere.
     env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(reset.user_id),
     // Reset links aren't needed once used.
     env.DB.prepare("DELETE FROM password_resets WHERE user_id = ?").bind(reset.user_id),
   ]);
 
-  const user = await env.DB.prepare("SELECT id, email, display_name FROM users WHERE id = ?")
+  const user = await env.DB.prepare("SELECT id, email, display_name, email_verified_at FROM users WHERE id = ?")
     .bind(reset.user_id)
-    .first<{ id: number; email: string; display_name: string }>();
+    .first<UserFields>();
   if (!user) throw invalid;
   return json({ user: toUser(user) }, { headers: { "Set-Cookie": await startSession(env, user.id) } });
+}
+
+// ---------- email verification ----------
+
+const VERIFY_DAYS = 3;
+
+function appOrigin(env: Env, request: Request): string {
+  return env.APP_URL?.replace(/\/+$/, "") || new URL(request.url).origin;
+}
+
+/** Emails a verification link (replacing any earlier one). */
+async function sendVerification(env: Env, request: Request, user: UserFields): Promise<void> {
+  const token = randomToken();
+  const expires = new Date(Date.now() + VERIFY_DAYS * 86_400_000).toISOString();
+  await env.DB.batch([
+    // Replaces any earlier link, and tidies up everyone's expired ones.
+    env.DB.prepare("DELETE FROM email_verifications WHERE user_id = ? OR expires_at < ?").bind(
+      user.id,
+      new Date().toISOString(),
+    ),
+    env.DB.prepare("INSERT INTO email_verifications (id, user_id, expires_at) VALUES (?, ?, ?)").bind(
+      await sha256(token),
+      user.id,
+      expires,
+    ),
+  ]);
+  // Token in the URL fragment: never sent to servers or kept in Referer headers.
+  const link = `${appOrigin(env, request)}/verify-email#token=${token}`;
+  await sendEmail(env, { to: user.email, ...verifyEmailEmail(user.display_name, link) });
+}
+
+/** POST /api/auth/verify { token } */
+export async function verifyEmail(env: Env, body: Record<string, unknown>): Promise<Response> {
+  const token = typeof body.token === "string" && body.token.length <= 100 ? body.token : "";
+  const invalid = new HttpError(400, "This link is invalid or has expired. Log in and request a new one.");
+  if (!token) throw invalid;
+  const row = await env.DB.prepare(
+    "SELECT user_id FROM email_verifications WHERE id = ? AND expires_at > ?",
+  )
+    .bind(await sha256(token), new Date().toISOString())
+    .first<{ user_id: number }>();
+  if (!row) throw invalid;
+  await env.DB.batch([
+    env.DB.prepare(
+      "UPDATE users SET email_verified_at = COALESCE(email_verified_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) WHERE id = ?",
+    ).bind(row.user_id),
+    env.DB.prepare("DELETE FROM email_verifications WHERE user_id = ?").bind(row.user_id),
+  ]);
+  return json({ ok: true });
+}
+
+/** POST /api/auth/resend-verification (logged in) */
+export async function resendVerification(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const user = await requireUser(request, env);
+  if (user.emailVerified) return json({ ok: true, alreadyVerified: true });
+  await rateLimit(request, env, "verify", user.email);
+  const row = await env.DB.prepare("SELECT id, email, display_name, email_verified_at FROM users WHERE id = ?")
+    .bind(user.id)
+    .first<UserFields>();
+  if (row) ctx.waitUntil(sendVerification(env, request, row).catch((err) => console.error("verification email failed", err)));
+  return json({ ok: true });
 }

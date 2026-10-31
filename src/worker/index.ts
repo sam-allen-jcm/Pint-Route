@@ -1,5 +1,15 @@
 import { MAX_STOPS, MEETING_POINT_ID, type Bounds, type LatLng } from "../shared/types";
-import { forgotPassword, getUser, login, logout, register, requireUser, resetPassword } from "./auth";
+import {
+  forgotPassword,
+  getUser,
+  login,
+  logout,
+  register,
+  requireUser,
+  resendVerification,
+  resetPassword,
+  verifyEmail,
+} from "./auth";
 import {
   addStop,
   claimCrawls,
@@ -53,6 +63,14 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
   const track = (event: string, detail = "") => ctx.waitUntil(recordUsage(env, event, detail));
 
   // ---- Places (live from Google, short-lived cache) ----
+  // Anything that may call Google is rate-limited per IP to protect the API bill.
+  const googleBacked = path.startsWith("/api/places") || /^\/api\/crawls\/[a-z0-9]+\/(route|stops)$/.test(path);
+  if (googleBacked && env.GOOGLE_LIMITER) {
+    const ip = request.headers.get("CF-Connecting-IP") ?? "local";
+    if (!(await env.GOOGLE_LIMITER.limit({ key: ip })).success) {
+      throw new HttpError(429, "You're going a bit fast. Please wait a moment and try again.");
+    }
+  }
   if (path === "/api/places/search" && method === "GET") {
     const q = (url.searchParams.get("q") ?? "").slice(0, 120);
     const places = await searchPlaces(env, q, parseNear(url), parseBounds(url.searchParams.get("bias")));
@@ -92,7 +110,7 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
 
   // ---- Accounts ----
   if (path === "/api/auth/register" && method === "POST") {
-    const res = await register(request, env, await readJson(request));
+    const res = await register(request, env, ctx, await readJson(request));
     track("signup");
     return res;
   }
@@ -114,6 +132,16 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
   if (path === "/api/auth/forgot" && method === "POST") {
     const res = await forgotPassword(request, env, ctx, await readJson(request));
     track("password_reset_requested");
+    return res;
+  }
+  if (path === "/api/auth/verify" && method === "POST") {
+    const res = await verifyEmail(env, await readJson(request));
+    track("email_verified");
+    return res;
+  }
+  if (path === "/api/auth/resend-verification" && method === "POST") {
+    const res = await resendVerification(request, env, ctx);
+    track("verification_resent");
     return res;
   }
   if (path === "/api/auth/reset" && method === "POST") {
@@ -146,6 +174,10 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
   // ---- Crawls (D1) ----
   if (path === "/api/crawls" && method === "POST") {
     const body = await readJson(request);
+    const creator = await getUser(request, env);
+    if (creator && env.CREATE_LIMITER && !(await env.CREATE_LIMITER.limit({ key: String(creator.id) })).success) {
+      throw new HttpError(429, "That's a lot of crawls! Please wait a minute before creating another.");
+    }
     const created = await createCrawl(request, env, body);
     track("crawl_created", typeof body.countryCode === "string" ? body.countryCode.toUpperCase() : "");
     if (body.cityPlaceId) track("crawl_created_with_town");
@@ -190,7 +222,7 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
     if (order && (order.length > MAX_STOPS || !order.every(Number.isInteger))) throw new HttpError(400, "Invalid stops");
     // No browser caching: the route changes whenever stops change (the Worker
     // still caches Google's answer per place sequence).
-    const { meetPlaceId, stops } = await getStopsForRoute(env, m[1], order);
+    const { meetPlaceId, stops } = await getStopsForRoute(env, m[1], order, request);
     // The walk starts at the meeting point, if there is one.
     const waypoints = [...(meetPlaceId && stops.length ? [{ id: MEETING_POINT_ID, placeId: meetPlaceId }] : []), ...stops];
     return json(await walkingRoute(env, waypoints));
@@ -234,7 +266,9 @@ export default {
     try {
       return await handleApi(request, env, ctx, url);
     } catch (err) {
-      if (err instanceof HttpError) return json({ error: err.message }, { status: err.status });
+      if (err instanceof HttpError) {
+        return json({ error: err.message, ...(err.code ? { code: err.code } : {}) }, { status: err.status });
+      }
       console.error(err);
       return json({ error: "Something went wrong" }, { status: 500 });
     }

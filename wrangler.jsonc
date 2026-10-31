@@ -46,6 +46,20 @@
       "name": "AUTH_IP_LIMITER",
       "namespace_id": "1002",
       "simple": { "limit": 60, "period": 60 }
+    },
+    // Caps calls to the Google-backed endpoints (search, place details, photos,
+    // routes) per IP, so a bot can't run up the Google Maps bill.
+    {
+      "name": "GOOGLE_LIMITER",
+      "namespace_id": "1003",
+      // Generous: a group on shared pub Wi-Fi opening a 25-stop crawl loads lots of photos.
+      "simple": { "limit": 300, "period": 60 }
+    },
+    // New crawls per account.
+    {
+      "name": "CREATE_LIMITER",
+      "namespace_id": "1004",
+      "simple": { "limit": 10, "period": 60 }
     }
   ]
 

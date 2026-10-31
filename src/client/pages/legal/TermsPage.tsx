@@ -53,8 +53,10 @@ export function TermsPage() {
 
       <h2>4. Your account</h2>
       <p>
-        You can use {service} without an account. If you create one, give us accurate details and keep your password
-        secret: you're responsible for what happens under your account. Tell us straight away at{" "}
+        You can view crawls that people share with you without an account, but you need a free account to create a
+        crawl. Give us accurate details, including an email address you can receive mail at, and keep your password
+        secret: you're responsible for what happens under your account. Your crawls can only be shared with others once
+        you've confirmed your email address using the link we send you. Tell us straight away at{" "}
         <LegalEmail email={email} /> if you think someone else has accessed it. You can ask us to delete your account at
         any time.
       </p>
@@ -72,6 +74,9 @@ export function TermsPage() {
         <li>
           Don't add content that is unlawful, harmful, threatening, abusive, hateful, defamatory, obscene, infringes
           anyone's rights, or contains other people's personal information without permission.
+        </li>
+        <li>
+          Don't use crawl names or notes to advertise, spam or post web links. Links aren't allowed in names or notes.
         </li>
         <li>We may remove content, or crawls, that break these terms.</li>
       </ul>

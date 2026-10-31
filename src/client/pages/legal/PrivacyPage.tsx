@@ -30,10 +30,13 @@ export function PrivacyPage() {
         <tbody>
           <tr>
             <td>
-              <strong>Account details</strong>: your name, email address and password (stored only as a salted,
-              one-way hash we can't reverse)
+              <strong>Account details</strong>: your name, email address, password (stored only as a salted, one-way
+              hash we can't reverse), and whether and when you confirmed your email address
             </td>
-            <td>To create and run your account, log you in, and let you reset your password</td>
+            <td>
+              To create and run your account, log you in, let you reset your password, and check your email address is
+              real before your crawls can be shared (to keep spam off {service})
+            </td>
             <td>Contract (providing the service you signed up for)</td>
           </tr>
           <tr>
@@ -68,6 +71,13 @@ export function PrivacyPage() {
           </tr>
           <tr>
             <td>
+              <strong>Email confirmation links</strong>: a hashed, single-use token and when it expires
+            </td>
+            <td>To confirm you own the email address you signed up with</td>
+            <td>Contract; legitimate interests (preventing spam and abuse)</td>
+          </tr>
+          <tr>
+            <td>
               <strong>Your location</strong>, only when you tap "near me" or "Show my location"
             </td>
             <td>
@@ -87,7 +97,8 @@ export function PrivacyPage() {
               <strong>Technical data</strong>: IP address, browser and device details, and request logs
             </td>
             <td>
-              To run, secure and debug the service, including limiting repeated login attempts to protect accounts
+              To run, secure and debug the service, including limiting repeated login attempts to protect accounts, and
+              limiting how often searches can be run and crawls created, to stop automated abuse
             </td>
             <td>Legitimate interests (security and keeping the service working)</td>
           </tr>
@@ -131,8 +142,9 @@ export function PrivacyPage() {
         </tbody>
       </table>
       <p>
-        You can use {service} without an account. If you do, we don't know who you are: your crawls are linked to a
-        private edit link stored in your browser, not to your identity.
+        You need a free account to create a crawl. You don't need one to view a crawl someone has shared with you, and
+        we don't know who you are when you do. Crawls created without an account before accounts were required stay
+        linked to a private edit link stored in the browser that created them, not to anyone's identity.
       </p>
       <p>
         We do <strong>not</strong> sell your personal data, use it for advertising, or make decisions about you based
@@ -141,7 +153,9 @@ export function PrivacyPage() {
 
       <h2>3. Crawls you share</h2>
       <p>
-        Every crawl has a share link. <strong>Anyone with the link can see the crawl</strong>, including its name, the
+        Every crawl has a share link. It only starts working once the account that created the crawl has confirmed its
+        email address; until then, only people who can edit the crawl can open it. After that,{" "}
+        <strong>anyone with the link can see the crawl</strong>, including its name, the
         meeting point, the start date and time, the pubs on it, which ones have been ticked off and when, and any notes. Don't put anything in a crawl you wouldn't
         want the people you share it with to see. Anyone with the private edit link can change the crawl, so only share
         that with people you trust.
@@ -174,7 +188,7 @@ export function PrivacyPage() {
           .
         </li>
         <li>
-          <strong>Resend, Inc.</strong>: sends our emails, such as password reset links, so it receives your email
+          <strong>Resend, Inc.</strong>: sends our emails, such as email confirmation and password reset links, so it receives your email
           address and the email's content.{" "}
           <a href="https://resend.com/legal/privacy-policy" target="_blank" rel="noreferrer">
             Privacy policy
@@ -217,6 +231,10 @@ export function PrivacyPage() {
           <strong>Password reset links</strong>: valid for 1 hour, and deleted once used or replaced.
         </li>
         <li>
+          <strong>Email confirmation links</strong>: valid for 3 days, and deleted once your email is confirmed or a
+          new link is sent.
+        </li>
+        <li>
           <strong>Usage statistics</strong>: the anonymous daily counts are kept for as long as they're useful,
           because they can't identify anyone.
         </li>
@@ -239,7 +257,7 @@ export function PrivacyPage() {
       <h2>8. Keeping your data safe</h2>
       <p>
         Everything is sent over encrypted HTTPS. Passwords are stored only as salted, slow one-way hashes. Session and
-        reset tokens are stored only in hashed form. Repeated login attempts are rate-limited. No system is perfectly
+        reset tokens are stored only in hashed form. Repeated login attempts, searches and crawl creation are rate-limited. No system is perfectly
         secure, but if a breach puts your rights at risk we'll tell you and the Information Commissioner's Office as
         the law requires.
       </p>

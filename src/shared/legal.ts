@@ -3,4 +3,4 @@
  * accept. Recorded against each account (users.terms_version). Change it to the
  * new date whenever the Terms or Privacy Policy change materially.
  */
-export const TERMS_VERSION = "2026-10-30";
+export const TERMS_VERSION = "2026-10-31";

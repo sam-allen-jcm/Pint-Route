@@ -13,6 +13,8 @@ interface AuthState {
   /** Sets a new password from a reset link and logs in. */
   resetPassword: (token: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  /** Re-reads the logged-in user (e.g. after confirming the email address). */
+  refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -83,8 +85,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, isAdmin, login, register, resetPassword, logout }),
-    [user, isAdmin, login, register, resetPassword, logout],
+    () => ({ user, isAdmin, login, register, resetPassword, logout, refresh }),
+    [user, isAdmin, login, register, resetPassword, logout, refresh],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

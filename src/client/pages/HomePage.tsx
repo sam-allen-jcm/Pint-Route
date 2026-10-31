@@ -3,7 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import type { CrawlSummary } from "../../shared/types";
 import { api } from "../api";
 import { useAuth } from "../auth";
+import { SaveCrawlAccount } from "../components/SaveCrawlAccount";
 import { SiteFooter } from "../components/SiteFooter";
+import { VerifyBanner } from "../components/VerifyBanner";
 import { CityPicker, type PickedCity } from "../components/CityPicker";
 import { DURATIONS, NO_DURATION_LABEL, durationLabel } from "../components/ScheduleEditor";
 import { countries, defaultCountry, rememberCountry } from "../countries";
@@ -35,6 +37,8 @@ export function HomePage() {
   const [perStop, setPerStop] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Logged out: after the details, ask them to sign up (or log in) to save the crawl. */
+  const [step, setStep] = useState<"details" | "account">("details");
   const [accountCrawls, setAccountCrawls] = useState<CrawlSummary[] | null>(null);
 
   useEffect(() => {
@@ -63,22 +67,31 @@ export function HomePage() {
   ];
   const loadingList = Boolean(user) && accountCrawls === null;
 
+  /** Saves the crawl to the (now logged-in) account and opens it. */
+  async function saveCrawl() {
+    const { slug, editToken } = await api.createCrawl(name.trim(), {
+      countryCode,
+      cityPlaceId: city?.placeId ?? null,
+      sessionToken: city ? sessionToken : null,
+      startsAt: startDate && startTime ? `${startDate}T${startTime}` : null,
+      ...(perStop ? { minutesPerStop: Number(perStop) } : {}),
+    });
+    rememberCountry(countryCode);
+    savedCrawls.save(slug, name.trim(), editToken);
+    navigate(`/c/${slug}?tab=edit`);
+  }
+
   async function create(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
+    if (!user) {
+      setStep("account");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      const { slug, editToken } = await api.createCrawl(name.trim(), {
-        countryCode,
-        cityPlaceId: city?.placeId ?? null,
-        sessionToken: city ? sessionToken : null,
-        startsAt: startDate && startTime ? `${startDate}T${startTime}` : null,
-        ...(perStop ? { minutesPerStop: Number(perStop) } : {}),
-      });
-      rememberCountry(countryCode);
-      savedCrawls.save(slug, name.trim(), editToken);
-      navigate(`/c/${slug}?tab=edit`);
+      await saveCrawl();
     } catch (err) {
       setError((err as Error).message);
       setBusy(false);
@@ -124,88 +137,93 @@ export function HomePage() {
         </div>
       </header>
 
+      {user && !user.emailVerified && <VerifyBanner className="banner home-verify" />}
+
       <section className="card">
-        <h2>Start a new crawl</h2>
-        <form onSubmit={create} className="stack">
-          <label className="field">
-            <span>Country</span>
-            <select className="select" value={countryCode} onChange={(e) => setCountryCode(e.target.value)}>
-              {countries().map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="field">
-            <span>
-              Town or city <span className="optional">(optional)</span>
-            </span>
-            <CityPicker countryCode={countryCode} value={city} onChange={setCity} sessionToken={sessionToken} />
-          </div>
-          <div className="field">
-            <span>
-              When <span className="optional">(optional)</span>
-            </span>
-            <div className="schedule-row">
-              <input
-                type="date"
-                aria-label="Start date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-              <input
-                type="time"
-                aria-label="Start time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-              />
-            </div>
-            {(startDate && !startTime) || (!startDate && startTime) ? (
-              <span className="hint">Add both a date and a time, or leave both blank.</span>
-            ) : null}
-          </div>
-          <label className="field">
-            <span>
-              Time at each pub <span className="optional">(optional)</span>
-            </span>
-            <select className="select" value={perStop} onChange={(e) => setPerStop(e.target.value)}>
-              <option value="">{NO_DURATION_LABEL}</option>
-              {DURATIONS.map((m) => (
-                <option key={m} value={m}>
-                  {durationLabel(m)}
-                </option>
-              ))}
-            </select>
-            <span className="hint">
-              Set it to estimate when you'll reach each pub. Left blank, each pub shows its opening hours that day.
-            </span>
-          </label>
-          <label className="field">
-            <span>Crawl name</span>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Friday in Soho"
-              maxLength={80}
-              autoComplete="off"
-              required
-            />
-          </label>
-          <button
-            className="btn btn-primary btn-block"
-            disabled={busy || !name.trim() || Boolean(startDate) !== Boolean(startTime)}
-          >
-            {busy ? "Pulling a pint…" : "Create crawl"}
-          </button>
-          {error && <p className="error">{error}</p>}
-          {!user && (
-            <p className="fine-print">
-              By creating a crawl you confirm you're of legal drinking age and agree to our{" "}
-              <Link to="/terms">Terms</Link> and <Link to="/privacy">Privacy Policy</Link>.
-            </p>
-          )}
-        </form>
+        {step === "account" && !user ? (
+          <SaveCrawlAccount crawlName={name.trim()} onSignedIn={saveCrawl} onBack={() => setStep("details")} />
+        ) : (
+          <>
+            <h2>Start a new crawl</h2>
+            <form onSubmit={create} className="stack">
+              <label className="field">
+                <span>Country</span>
+                <select className="select" value={countryCode} onChange={(e) => setCountryCode(e.target.value)}>
+                  {countries().map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="field">
+                <span>
+                  Town or city <span className="optional">(optional)</span>
+                </span>
+                <CityPicker countryCode={countryCode} value={city} onChange={setCity} sessionToken={sessionToken} />
+              </div>
+              <div className="field">
+                <span>
+                  When <span className="optional">(optional)</span>
+                </span>
+                <div className="schedule-row">
+                  <input
+                    type="date"
+                    aria-label="Start date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                  <input
+                    type="time"
+                    aria-label="Start time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                  />
+                </div>
+                {(startDate && !startTime) || (!startDate && startTime) ? (
+                  <span className="hint">Add both a date and a time, or leave both blank.</span>
+                ) : null}
+              </div>
+              <label className="field">
+                <span>
+                  Time at each pub <span className="optional">(optional)</span>
+                </span>
+                <select className="select" value={perStop} onChange={(e) => setPerStop(e.target.value)}>
+                  <option value="">{NO_DURATION_LABEL}</option>
+                  {DURATIONS.map((m) => (
+                    <option key={m} value={m}>
+                      {durationLabel(m)}
+                    </option>
+                  ))}
+                </select>
+                <span className="hint">
+                  Set it to estimate when you'll reach each pub. Left blank, each pub shows its opening hours that day.
+                </span>
+              </label>
+              <label className="field">
+                <span>Crawl name</span>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Friday in Soho"
+                  maxLength={80}
+                  autoComplete="off"
+                  required
+                />
+              </label>
+              <button
+                className="btn btn-primary btn-block"
+                disabled={busy || !name.trim() || Boolean(startDate) !== Boolean(startTime)}
+              >
+                {busy ? "Pulling a pint…" : user === null ? "Continue" : "Create crawl"}
+              </button>
+              {error && <p className="error">{error}</p>}
+              {user === null && (
+                <p className="fine-print">Next, create a free account (or log in) to save your crawl and share it.</p>
+              )}
+            </form>
+          </>
+        )}
       </section>
 
       <section className="stack">
@@ -214,9 +232,7 @@ export function HomePage() {
           <p className="muted">Loading your crawls…</p>
         ) : items.length === 0 ? (
           <p className="muted">
-            {user
-              ? "No crawls yet. Start one above."
-              : "Crawls you create on this device appear here. Anyone you share a link with can view it, but only this browser can edit it."}
+            {user ? "No crawls yet. Start one above." : "Log in to see your crawls, or start one above."}
           </p>
         ) : (
           <ul className="crawl-list">

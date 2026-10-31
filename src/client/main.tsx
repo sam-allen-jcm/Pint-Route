@@ -8,6 +8,7 @@ import { CookiesPage } from "./pages/legal/CookiesPage";
 import { PrivacyPage } from "./pages/legal/PrivacyPage";
 import { TermsPage } from "./pages/legal/TermsPage";
 import { ForgotPasswordPage, ResetPasswordPage } from "./pages/PasswordResetPages";
+import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 import { StatsPage } from "./pages/StatsPage";
 import { CrawlPage } from "./pages/CrawlPage";
 import { NotFound } from "./pages/NotFound";
@@ -23,6 +24,7 @@ createRoot(document.getElementById("root")!).render(
           <Route path="/register" element={<AuthPage mode="register" />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/cookies" element={<CookiesPage />} />

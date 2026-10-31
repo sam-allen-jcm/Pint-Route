@@ -47,6 +47,8 @@ const EVENT_LABELS: Record<string, string> = {
   signup: "Sign-up",
   signup_total: "New accounts",
   login: "Log in",
+  email_verified: "Email confirmed",
+  verification_resent: "Confirmation email re-sent",
   login_failed: "Failed log in",
   password_reset_requested: "Password reset requested",
   password_reset_completed: "Password reset completed",

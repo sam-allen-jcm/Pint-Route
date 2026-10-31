@@ -53,7 +53,8 @@ export function CookiesPage() {
             </td>
             <td>Local storage (strictly necessary)</td>
             <td>
-              Remembers the crawls you've created on this device, and their private edit links, so you can edit them.
+              Remembers the crawls you've opened or created on this device, and their private edit links, so you can
+              edit them.
             </td>
             <td>Until you clear your browser data or log out</td>
           </tr>

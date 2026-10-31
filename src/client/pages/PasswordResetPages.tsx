@@ -4,7 +4,17 @@ import { api } from "../api";
 import { useAuth } from "../auth";
 import { SiteFooter } from "../components/SiteFooter";
 
-function AuthShell({ title, lead, children }: { title: string; lead: string; children: React.ReactNode }) {
+export function AuthShell({
+  title,
+  lead,
+  children,
+  backToLogin = true,
+}: {
+  title: string;
+  lead: string;
+  children: React.ReactNode;
+  backToLogin?: boolean;
+}) {
   return (
     <main className="page narrow">
       <header className="auth-header">
@@ -17,9 +27,11 @@ function AuthShell({ title, lead, children }: { title: string; lead: string; chi
         {lead && <p className="muted small auth-lead">{lead}</p>}
         {children}
       </section>
-      <p className="center-text">
-        <Link to="/login">Back to log in</Link>
-      </p>
+      {backToLogin && (
+        <p className="center-text">
+          <Link to="/login">Back to log in</Link>
+        </p>
+      )}
       <SiteFooter />
     </main>
   );

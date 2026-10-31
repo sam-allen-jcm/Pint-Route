@@ -88,6 +88,8 @@ export interface User {
   id: number;
   email: string;
   name: string;
+  /** False until the emailed verification link is used; shared links stay off until then. */
+  emailVerified: boolean;
 }
 
 /** A crawl in the logged-in user's account list. */
@@ -109,6 +111,8 @@ export interface Crawl {
   canEdit: boolean;
   /** True when the crawl belongs to the logged-in user. */
   isOwner: boolean;
+  /** False while the owner hasn't verified their email: the share link doesn't work yet. */
+  ownerVerified: boolean;
   /** True when the request's X-Edit-Token is this crawl's edit token. */
   hasValidToken: boolean;
   /** ISO country code chosen when the crawl was created (null for older crawls). */

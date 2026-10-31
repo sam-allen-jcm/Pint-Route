@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { MEETING_POINT_ID, type Crawl, type CrawlRoute, type PlaceDetails, type PlaceSummary, type RouteLeg, type Stop } from "../../shared/types";
+import {
+  MEETING_POINT_ID,
+  type Crawl,
+  type CrawlRoute,
+  type PlaceDetails,
+  type PlaceSummary,
+  type RouteLeg,
+  type Stop,
+} from "../../shared/types";
 import { api, ApiError } from "../api";
 import { AreaSheet } from "../components/AreaSheet";
 import { BurgerMenu, HeaderNav } from "../components/CrawlMenu";
@@ -15,6 +23,7 @@ import { ShareSheet } from "../components/ShareSheet";
 import { SiteFooter } from "../components/SiteFooter";
 import { StopCard } from "../components/StopCard";
 import { useAuth } from "../auth";
+import { VerifyBanner } from "../components/VerifyBanner";
 import { formatDistance, formatDuration } from "../format";
 import { savedCrawls } from "../storage";
 import { useMediaQuery } from "../useMediaQuery";
@@ -64,6 +73,8 @@ export function CrawlPage() {
   const tab: Tab = wide && requestedTab === "map" ? "stops" : requestedTab;
   // Edit rights come from this device's edit token or from owning the crawl.
   const canEdit = Boolean(crawl?.canEdit);
+  // Shareable once the creator has confirmed their email (picked up live if they just did).
+  const shareable = Boolean(crawl && (crawl.ownerVerified || (crawl.isOwner && user?.emailVerified)));
 
   const setTab = (t: Tab) => {
     if (t === "map" && tab !== "map") api.trackEvent("map_viewed");
@@ -158,7 +169,9 @@ export function CrawlPage() {
         message={
           loadError instanceof ApiError && loadError.status === 404
             ? "This crawl doesn't exist (or it was deleted)."
-            : loadError.message
+            : loadError instanceof ApiError && loadError.code === "unverified"
+              ? "This crawl isn't available yet: the person who made it still needs to confirm their email address. If it's yours, log in to see it."
+              : loadError.message
         }
       />
     );
@@ -174,7 +187,11 @@ export function CrawlPage() {
   const stops = crawl.stops;
   const visitedCount = stops.filter((s) => s.visitedOn).length;
   // The next pub gets added after the last stop, so search results are measured from there.
-  const lastStopPlace = [...stops].reverse().map((s) => places[s.placeId]).find((p) => p?.location) ?? null;
+  const lastStopPlace =
+    [...stops]
+      .reverse()
+      .map((s) => places[s.placeId])
+      .find((p) => p?.location) ?? null;
   // Before any pubs are added, measure searches from the meeting point.
   const searchFrom = lastStopPlace
     ? { name: lastStopPlace.name, location: lastStopPlace.location, kind: "last stop" as const }
@@ -283,31 +300,32 @@ export function CrawlPage() {
     </div>
   ) : null;
 
-  const meetingSection =
-    meeting ? (
-      <div className="meeting">
-        {meeting ? (
-          <article className="stop meeting-card">
-            <div className="stop-main">
-              <div className="stop-num meeting-icon" aria-label="Meeting point">
-                🚩
-              </div>
-              <div className="stop-body">
-                <div className="meeting-label">Meeting point{start && ` · ${formatClock(start)}`}</div>
-                <h3 className="stop-name">{meeting.name}</h3>
-                {meeting.address && <div className="stop-address">{meeting.address}</div>}
-                {meeting.googleMapsUri && (
-                  <a className="small-link" href={meeting.googleMapsUri} target="_blank" rel="noreferrer">
-                    Open in Google Maps ↗
-                  </a>
-                )}
-              </div>
+  const meetingSection = meeting ? (
+    <div className="meeting">
+      {meeting ? (
+        <article className="stop meeting-card">
+          <div className="stop-main">
+            <div className="stop-num meeting-icon" aria-label="Meeting point">
+              🚩
             </div>
-          </article>
-        ) : null}
-        {meeting && stops.length > 0 && <LegRow leg={meetingLeg} failed={Boolean(routeError)} label="Walk to the first stop" />}
-      </div>
-    ) : null;
+            <div className="stop-body">
+              <div className="meeting-label">Meeting point{start && ` · ${formatClock(start)}`}</div>
+              <h3 className="stop-name">{meeting.name}</h3>
+              {meeting.address && <div className="stop-address">{meeting.address}</div>}
+              {meeting.googleMapsUri && (
+                <a className="small-link" href={meeting.googleMapsUri} target="_blank" rel="noreferrer">
+                  Open in Google Maps ↗
+                </a>
+              )}
+            </div>
+          </div>
+        </article>
+      ) : null}
+      {meeting && stops.length > 0 && (
+        <LegRow leg={meetingLeg} failed={Boolean(routeError)} label="Walk to the first stop" />
+      )}
+    </div>
+  ) : null;
 
   const stopsPanel = (
     <section className="stack">
@@ -481,8 +499,17 @@ export function CrawlPage() {
         </div>
       )}
 
-      {(!canEdit || actionError) && (
+      {(!canEdit || actionError || !shareable) && (
         <div className={`crawl-notices ${wide ? "wide" : ""}`}>
+          {canEdit &&
+            !shareable &&
+            (crawl.isOwner ? (
+              <VerifyBanner />
+            ) : (
+              <div className="banner">
+                🔒 Only people who can edit can see this crawl until its creator confirms their email address.
+              </div>
+            ))}
           {!canEdit && (
             <div className="banner">
               👀 You're viewing a shared crawl (read-only). <Link to="/">Plan your own on Pint Route</Link>
@@ -504,17 +531,10 @@ export function CrawlPage() {
 
       <div className={`crawl-layout ${wide ? "wide" : ""}`}>
         <main className="crawl-main">
-          {tab === "edit" && canEdit ? (
-            editPanel
-          ) : tab === "map" ? (
-            <div className="map-tab">{map}</div>
-          ) : (
-            stopsPanel
-          )}
+          {tab === "edit" && canEdit ? editPanel : tab === "map" ? <div className="map-tab">{map}</div> : stopsPanel}
         </main>
         {wide && <aside className="crawl-map">{map}</aside>}
       </div>
-
 
       {editingMeeting && (
         <MeetingPointSheet
@@ -533,13 +553,28 @@ export function CrawlPage() {
         />
       )}
       {sharing && (
-        <ShareSheet name={crawl.name} slug={slug} editToken={canEdit ? editToken : null} onClose={() => setSharing(false)} />
+        <ShareSheet
+          name={crawl.name}
+          slug={slug}
+          editToken={canEdit ? editToken : null}
+          locked={!shareable}
+          isOwner={crawl.isOwner}
+          onClose={() => setSharing(false)}
+        />
       )}
     </div>
   );
 }
 
-function LegRow({ leg, failed, label = "Walk to next stop" }: { leg: RouteLeg | null; failed: boolean; label?: string }) {
+function LegRow({
+  leg,
+  failed,
+  label = "Walk to next stop",
+}: {
+  leg: RouteLeg | null;
+  failed: boolean;
+  label?: string;
+}) {
   return (
     <div className="leg" aria-label={label}>
       <span className="leg-line" aria-hidden />

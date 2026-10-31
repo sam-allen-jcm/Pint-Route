@@ -2,6 +2,8 @@ export class HttpError extends Error {
   constructor(
     public status: number,
     message: string,
+    /** Machine-readable reason for the client, e.g. "unverified". */
+    public code?: string,
   ) {
     super(message);
   }

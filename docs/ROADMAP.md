@@ -178,5 +178,8 @@ registration once over the threshold. Get a solicitor to review.
 - [ ] **"Directions" link per leg** that opens Google Maps walking navigation
 - [ ] **Skip visited / closed pubs** in the remaining route
 - [ ] **Drag-to-reorder** stops (currently ▲/▼ buttons)
-- [ ] **Rate limiting** on the public Google-backed endpoints (`/api/places/*`), to cap API spend
-      if someone abuses them
+- [x] **Rate limiting** on the Google-backed endpoints and crawl creation (done; see README
+      "Accounts"). Also done: account required to create, email verification before sharing,
+      links blocked in names/notes
+- [ ] **Cloudflare Turnstile** on sign-up, if bot sign-ups appear (needs CookieYes/legal check)
+- [ ] **Report a crawl** link on shared crawls, so abuse reaches legal@pintroute.com quickly

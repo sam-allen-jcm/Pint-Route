@@ -6,6 +6,10 @@ export interface Env {
   /** Rate limiters for login/register (wrangler.jsonc "ratelimits"). */
   AUTH_EMAIL_LIMITER?: RateLimit;
   AUTH_IP_LIMITER?: RateLimit;
+  /** Per-IP cap on Google-backed endpoints. */
+  GOOGLE_LIMITER?: RateLimit;
+  /** Per-account cap on creating crawls. */
+  CREATE_LIMITER?: RateLimit;
   /** Secret: Resend API key for outgoing email. */
   RESEND_API_KEY?: string;
   /** Secret: comma-separated emails allowed to open the /stats dashboard. */

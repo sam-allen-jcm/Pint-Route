@@ -1707,3 +1707,28 @@ input[type="time"]::-webkit-date-and-time-value {
   font-size: 0.8rem;
   color: var(--muted);
 }
+
+/* "Confirm your email" reminder */
+.banner-verify p {
+  margin: 0;
+}
+.banner-verify .banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 6px;
+}
+.home-verify {
+  margin: 0 0 16px;
+}
+.account-step-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.share-locked {
+  padding: 14px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+}

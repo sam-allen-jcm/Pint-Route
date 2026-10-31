@@ -221,10 +221,22 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 - Stops already on a crawl that later close are **flagged** with a red "Permanently closed" or
   "Temporarily closed" badge, and their map pin turns grey.
 
-### Accounts (optional)
+### Accounts
 
-- People can register and log in with **email + password**, but don't have to: guests can
-  still create and share crawls exactly as before.
+- Viewing a shared crawl needs no account, but **creating a crawl does**. Logged-out visitors
+  fill in the crawl details, then a "Save your crawl" step asks them to sign up (or log in),
+  and the crawl is created in their account. Crawls made by guests before this change keep
+  working through their edit tokens.
+- **Email verification:** sign-up sends a "Confirm your email" link (Resend, 3-day token in the
+  URL fragment, `/verify-email#token=…`, only the SHA-256 stored in `email_verifications`).
+  Until the owner confirms, their crawls work for them and anyone with edit rights, but the
+  share link returns 403 `{ code: "unverified" }` to everyone else and the WhatsApp/iMessage
+  preview is generic. Resetting a password also marks the email verified (it proves access).
+  Accounts that existed before this was added were marked verified by migration 0009.
+- **Anti-spam:** web links are rejected in crawl names, notes and display names
+  (`src/shared/content.ts`); crawl creation is limited to 10 a minute per account
+  (`CREATE_LIMITER`), and Google-backed endpoints (`/api/places/*`, a crawl's route and
+  adding stops) to 300 a minute per IP (`GOOGLE_LIMITER`) to protect the Google bill.
 - Passwords are hashed with **PBKDF2-SHA256** (random 16-byte salt, 100,000 iterations, the
   maximum Workers' WebCrypto allows). The iteration count is stored with each hash so it can
   be raised later.
@@ -275,10 +287,12 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 | `GET /api/auth/me` | – | `{ user }` (or `null`) |
 | `POST /api/auth/forgot` | – | `{ email }` → emails a reset link if the account exists (always `{ ok: true }`) |
 | `POST /api/auth/reset` | – | `{ token, password }` → sets the new password, ends other sessions, logs in |
+| `POST /api/auth/verify` | – | `{ token }` → confirms the email address |
+| `POST /api/auth/resend-verification` | session | Sends a new confirmation link (rate-limited) |
 | `GET /api/me/crawls` | session | The user's crawls, newest first |
 | `POST /api/me/claim` | session | `{ crawls: [{ slug, editToken }] }` → moves guest crawls into the account |
-| `POST /api/crawls` | – | `{ name, countryCode?, cityPlaceId?, sessionToken? }` → `{ slug, editToken }` (owned by the user if logged in) |
-| `GET /api/crawls/:slug` | optional | Crawl + stops (`canEdit` from the token or ownership, `isOwner`) |
+| `POST /api/crawls` | session | `{ name, countryCode?, cityPlaceId?, sessionToken?, startsAt?, minutesPerStop? }` → `{ slug, editToken }` owned by the user |
+| `GET /api/crawls/:slug` | optional | Crawl + stops (`canEdit` from the token or ownership, `isOwner`, `ownerVerified`). 403 `unverified` for non-editors until the owner confirms their email |
 | `PATCH /api/crawls/:slug` | edit | `{ name }`, `{ countryCode, cityPlaceId?, sessionToken? }` and/or `{ meetPlaceId \| null, sessionToken? }` |
 | `DELETE /api/crawls/:slug` | edit | Delete crawl |
 | `GET /api/crawls/:slug/route?stops=1,2,3` | – | Walking route through the given stop ids in that order (defaults to the saved order): per-leg time, distance and polyline |

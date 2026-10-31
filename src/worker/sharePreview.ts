@@ -50,15 +50,19 @@ export async function crawlPage(request: Request, env: Env, slug: string): Promi
   try {
     crawl = await env.DB.prepare(
       `SELECT c.name, c.area_place_id, c.starts_at, COUNT(s.id) AS stop_count
-       FROM crawls c LEFT JOIN stops s ON s.crawl_id = c.id
-       WHERE c.slug = ? GROUP BY c.id`,
+       FROM crawls c
+       LEFT JOIN users u ON u.id = c.owner_id
+       LEFT JOIN stops s ON s.crawl_id = c.id
+       WHERE c.slug = ? AND (c.owner_id IS NULL OR u.email_verified_at IS NOT NULL)
+       GROUP BY c.id`,
     )
       .bind(slug)
       .first<CrawlSummaryRow>();
   } catch (err) {
     console.error("share preview lookup failed", err);
   }
-  if (!crawl) return page; // unknown crawl: the generic Pint Route preview
+  // Unknown crawl, or owner not verified yet: the generic Pint Route preview.
+  if (!crawl) return page;
 
   const title = `${crawl.name} · Pint Route`;
   const description = await describe(env, crawl);

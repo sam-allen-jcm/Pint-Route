@@ -60,14 +60,15 @@ pages and say so in your reply:
 
 | Data | Where | Retention |
 | --- | --- | --- |
-| Account: email, display name, PBKDF2 password hash, terms version and acceptance time | D1 `users` | Until deletion is requested (by email; no self-serve deletion yet) |
+| Account: email, display name, PBKDF2 password hash, terms version and acceptance time, email verified time | D1 `users` | Until deletion is requested (by email; no self-serve deletion yet) |
+| Email verification tokens (SHA-256, expiry) | D1 `email_verifications` | 3 days validity; deleted when used, superseded, or (expired) when anyone is next sent a link |
 | Sessions (SHA-256 of cookie token, expiry) | D1 `sessions`, cookie `pr_session` | 30 days / logout / password reset |
 | Password reset tokens (SHA-256, expiry) | D1 `password_resets` | 1 hour validity; deleted when used or superseded |
-| Crawls: name, Place IDs, order, visited dates, notes (only logged-in editors can write them), country code, area Place ID, meeting point Place ID, start date/time, minutes per stop, owner | D1 `crawls`, `stops` | Until deleted. Public to anyone with the share link. Link previews (`src/worker/sharePreview.ts`) expose the name, town, pub count and start date/time to messaging apps |
+| Crawls: name, Place IDs, order, visited dates, notes (only logged-in editors can write them), country code, area Place ID, meeting point Place ID, start date/time, minutes per stop, owner | D1 `crawls`, `stops` | Until deleted. An account is required to create one. Public to anyone with the share link once the owner's email is verified (before that, editors only, and link previews are generic). Link previews (`src/worker/sharePreview.ts`) expose the name, town, pub count and start date/time to messaging apps |
 | Guest edit tokens, last country | Browser localStorage `pint-route:crawls`, `pint-route:last-country` | Until cleared |
 | Location, "near me" | Sent to Worker and Google, not stored; rounded copy cached ≤5 min | Transient |
 | Location, "Show my location" (live dot on map) | Browser only (`watchPosition`); never sent to the Worker. Google sees map tile requests for the area shown | Until switched off / page closed |
-| IP address, request logs | Cloudflare (Workers observability logs); rate-limiter keys (IP, email) | Short-term |
+| IP address, request logs | Cloudflare (Workers observability logs); rate-limiter keys (IP, email, user id) | Short-term |
 | Cookie consent | CookieYes cookie `cookieyes-consent` | 1 year |
 | Usage stats: anonymous daily counts per event (+ coarse detail such as a country code) | D1 `usage_daily` (written by `src/worker/usage.ts`) | Indefinite (not personal data) |
 | Share-link view count per crawl | D1 `crawls.shared_views` | With the crawl |
@@ -84,6 +85,12 @@ Google Privacy Policy. Keep that section in the Terms.
 
 **Google Places terms:** store only Place IDs in D1. Names, hours, photos and locations must be
 fetched live, with short-lived caching only.
+
+**Anti-spam:** creating a crawl needs an account; share links and previews only work once the
+owner has verified their email (`assertVisible` in `src/worker/crawls.ts`); web links are rejected
+in crawl names, notes and display names (`src/shared/content.ts`); rate limits cover login,
+Google-backed endpoints (`GOOGLE_LIMITER`, per IP) and crawl creation (`CREATE_LIMITER`, per user).
+Accounts that existed before verification was added were marked verified by migration 0009.
 
 ## Known gaps to close
 

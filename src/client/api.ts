@@ -17,6 +17,8 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    /** Machine-readable reason, e.g. "unverified". */
+    public code?: string,
   ) {
     super(message);
   }
@@ -28,8 +30,8 @@ async function request<T>(path: string, init: RequestInit & { editToken?: string
   if (rest.body) headers.set("Content-Type", "application/json");
   if (editToken) headers.set("X-Edit-Token", editToken);
   const res = await fetch(path, { ...rest, headers });
-  const data = (await res.json().catch(() => ({}))) as { error?: string };
-  if (!res.ok) throw new ApiError(res.status, data.error ?? `Request failed (${res.status})`);
+  const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+  if (!res.ok) throw new ApiError(res.status, data.error ?? `Request failed (${res.status})`, data.code);
   return data as T;
 }
 
@@ -71,6 +73,12 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ token, password }),
     }).then((r) => r.user);
+  },
+  verifyEmail(token: string) {
+    return request<{ ok: true }>("/api/auth/verify", { method: "POST", body: JSON.stringify({ token }) });
+  },
+  resendVerification() {
+    return request<{ ok: true; alreadyVerified?: boolean }>("/api/auth/resend-verification", { method: "POST" });
   },
   logout() {
     return request<{ ok: true }>("/api/auth/logout", { method: "POST" });
