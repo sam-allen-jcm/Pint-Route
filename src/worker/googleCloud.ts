@@ -12,9 +12,10 @@ const SERVICES: Record<string, string> = {
   "routes.googleapis.com": "Routes API",
   "maps-backend.googleapis.com": "Maps JavaScript API",
 };
-const SERVICE_FILTER = `(${Object.keys(SERVICES)
+// Cloud Monitoring filters take a list of values with one_of(...), not OR.
+const SERVICE_FILTER = `one_of(${Object.keys(SERVICES)
   .map((s) => `"${s}"`)
-  .join(" OR ")})`;
+  .join(", ")})`;
 
 /** Anything this big is Google's way of saying "unlimited". */
 const UNLIMITED = 1e15;
@@ -176,12 +177,13 @@ export async function getGoogleQuotas(env: Env): Promise<GoogleQuotaResponse> {
   try {
     const token = await accessToken(sa);
     const project = encodeURIComponent(sa.project_id);
-    const [limitSeries, usageSeries, requestSeries] = await Promise.all([
+    // Each query stands alone, so one failing still leaves the others on the card.
+    const settled = await Promise.allSettled([
       // Current limits (sampled now and then, so look back a day and take the latest).
       listSeries(
         token,
         project,
-        `metric.type="serviceruntime.googleapis.com/quota/limit" AND resource.type="consumer_quota" AND resource.label.service=${SERVICE_FILTER}`,
+        `metric.type="serviceruntime.googleapis.com/quota/limit" AND resource.type="consumer_quota" AND resource.label.service = ${SERVICE_FILTER}`,
         new Date(now.getTime() - 25 * 3_600_000),
         now,
         "ALIGN_NEXT_OLDER",
@@ -192,7 +194,7 @@ export async function getGoogleQuotas(env: Env): Promise<GoogleQuotaResponse> {
       listSeries(
         token,
         project,
-        `metric.type="serviceruntime.googleapis.com/quota/rate/net_usage" AND resource.type="consumer_quota" AND resource.label.service=${SERVICE_FILTER}`,
+        `metric.type="serviceruntime.googleapis.com/quota/rate/net_usage" AND resource.type="consumer_quota" AND resource.label.service = ${SERVICE_FILTER}`,
         dayStart,
         now,
         "ALIGN_SUM",
@@ -203,7 +205,7 @@ export async function getGoogleQuotas(env: Env): Promise<GoogleQuotaResponse> {
       listSeries(
         token,
         project,
-        `metric.type="serviceruntime.googleapis.com/api/request_count" AND resource.type="consumed_api" AND resource.label.service=${SERVICE_FILTER}`,
+        `metric.type="serviceruntime.googleapis.com/api/request_count" AND resource.type="consumed_api" AND resource.label.service = ${SERVICE_FILTER}`,
         dayStart,
         now,
         "ALIGN_SUM",
@@ -211,6 +213,9 @@ export async function getGoogleQuotas(env: Env): Promise<GoogleQuotaResponse> {
         ["resource.label.service", "resource.label.method", "metric.label.response_code_class"],
       ),
     ]);
+    const failures = settled.flatMap((r) => (r.status === "rejected" ? [(r.reason as Error).message] : []));
+    if (failures.length === settled.length) throw new Error(failures[0]);
+    const [limitSeries, usageSeries, requestSeries] = settled.map((r) => (r.status === "fulfilled" ? r.value : []));
 
     const used = new Map<string, number>();
     for (const s of usageSeries) {
@@ -252,8 +257,9 @@ export async function getGoogleQuotas(env: Env): Promise<GoogleQuotaResponse> {
       dayStart: dayStart.toISOString(),
       limits,
       requests,
+      ...(failures.length ? { error: `Some figures are missing: ${failures.join(" / ")}` } : {}),
     };
-    resultCache = { expires: Date.now() + 5 * 60_000, value };
+    if (!failures.length) resultCache = { expires: Date.now() + 5 * 60_000, value };
     return value;
   } catch (err) {
     console.error("Google Cloud quota read failed", (err as Error).message);

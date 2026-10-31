@@ -329,10 +329,11 @@ function GoogleUsage() {
           Not connected yet. Add a Google Cloud service-account key as the <code>GOOGLE_CLOUD_SA_KEY</code> secret (see
           the README) to see live usage and daily limits here.
         </p>
-      ) : data.error ? (
+      ) : data.error && !data.dayStart ? (
         <p className="error small">{data.error}</p>
       ) : (
         <>
+          {data.error && <p className="error small">{data.error}</p>}
           <p className="muted small">
             Live from Google Cloud (project <code>{data.projectId}</code>, refreshed every 5 minutes). Google's day
             resets at midnight Pacific Time{resets && <> ({resets} your time)</>}.
