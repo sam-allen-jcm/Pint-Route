@@ -101,6 +101,14 @@ export interface RatingSummary {
   count: number;
 }
 
+/** Ratings as shown on a crawl's own page. */
+export interface CrawlRating extends RatingSummary {
+  /** The logged-in user's own stars, if they've rated it. */
+  mine: number | null;
+  /** The creator's own stars, if they've rated their crawl (it counts in the average). */
+  byOwner: number | null;
+}
+
 /** A public crawl as listed in the Community area. */
 export interface CommunityCrawl {
   slug: string;
@@ -154,8 +162,8 @@ export interface Crawl {
   isPublic: boolean;
   /** Creator's public username, for public crawls only. */
   author: string | null;
-  /** Ratings (public crawls). `mine` is the logged-in user's own stars, if they've rated it. */
-  rating: RatingSummary & { mine: number | null };
+  /** Ratings (public crawls). */
+  rating: CrawlRating;
   copyCount: number;
   /** ISO country code chosen when the crawl was created (null for older crawls). */
   countryCode: string | null;

@@ -98,7 +98,7 @@ Accounts that existed before verification was added were marked verified by migr
 **Community:** usernames are checked by `src/shared/username.ts` (format, reserved names, a small
 block list); blank at sign-up means one is generated, and older accounts get one on first use.
 Public crawls need the owner's email confirmed and at least 2 pubs. Ratings need a confirmed email
-and can't be on your own crawl. Moderation is by hand: the Report link emails legal@pintroute.com
+(creators may rate their own; the crawl page discloses it). Moderation is by hand: the Report link emails legal@pintroute.com
 and admins (ADMIN_EMAILS) get an "Unpublish" button on public crawls.
 
 ## Known gaps to close

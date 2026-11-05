@@ -1964,3 +1964,19 @@ input[type="time"]::-webkit-date-and-time-value {
   opacity: 0.4;
   cursor: default;
 }
+.name-card {
+  margin: 0;
+}
+.name-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.name-row input {
+  flex: 1;
+  min-width: 0;
+}
+.title-pencil {
+  font-size: 0.7em;
+  opacity: 0.6;
+}

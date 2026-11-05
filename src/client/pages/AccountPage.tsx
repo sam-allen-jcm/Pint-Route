@@ -72,6 +72,22 @@ function MyCrawls() {
     }
   }
 
+  async function rename(c: CrawlSummary) {
+    const name = window.prompt("New name for this crawl:", c.name)?.trim();
+    if (!name || name === c.name) return;
+    setBusy(c.slug);
+    setError(null);
+    try {
+      const updated = await api.renameCrawl(c.slug, name, savedCrawls.token(c.slug));
+      savedCrawls.rename(c.slug, updated.name);
+      setCrawls((list) => list?.map((x) => (x.slug === c.slug ? { ...x, name: updated.name } : x)) ?? null);
+    } catch (err) {
+      setError(`${c.name}: ${(err as Error).message}`);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function remove(c: CrawlSummary) {
     if (!window.confirm(`Delete "${c.name}"? This can't be undone, and its share link will stop working.`)) return;
     setBusy(c.slug);
@@ -133,6 +149,9 @@ function MyCrawls() {
                 <Link className="text-btn" to={`/c/${c.slug}?tab=edit`}>
                   Edit
                 </Link>
+                <button className="text-btn" onClick={() => rename(c)} disabled={busy === c.slug}>
+                  Rename
+                </button>
                 <button className="text-btn" onClick={() => setSharing(c)}>
                   Share
                 </button>

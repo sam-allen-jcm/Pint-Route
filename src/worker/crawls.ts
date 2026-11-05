@@ -3,7 +3,7 @@ import {
   MIN_PUBLIC_STOPS,
   type CommunityCrawl,
   type CommunityPage,
-  type RatingSummary,
+  type CrawlRating,
   type Area,
   type MeetingPoint,
   type Crawl,
@@ -218,22 +218,20 @@ export async function createCrawl(
   throw new HttpError(500, "Could not allocate a share link, please try again");
 }
 
-async function ratingFor(
-  env: Env,
-  crawlId: number,
-  userId: number | null,
-): Promise<RatingSummary & { mine: number | null }> {
+async function ratingFor(env: Env, crawl: CrawlRow, userId: number | null): Promise<CrawlRating> {
   const row = await env.DB.prepare(
     `SELECT COUNT(*) AS count, AVG(stars) AS average,
-            (SELECT stars FROM ratings WHERE crawl_id = ? AND user_id = ?) AS mine
+            (SELECT stars FROM ratings WHERE crawl_id = ? AND user_id = ?) AS mine,
+            (SELECT stars FROM ratings WHERE crawl_id = ? AND user_id = ?) AS by_owner
      FROM ratings WHERE crawl_id = ?`,
   )
-    .bind(crawlId, userId ?? -1, crawlId)
-    .first<{ count: number; average: number | null; mine: number | null }>();
+    .bind(crawl.id, userId ?? -1, crawl.id, crawl.owner_id ?? -1, crawl.id)
+    .first<{ count: number; average: number | null; mine: number | null; by_owner: number | null }>();
   return {
     count: row?.count ?? 0,
     average: row?.average == null ? null : Math.round(row.average * 10) / 10,
     mine: row?.mine ?? null,
+    byOwner: row?.by_owner ?? null,
   };
 }
 
@@ -257,7 +255,7 @@ export async function getCrawl(request: Request, env: Env, slug: string): Promis
   return {
     isPublic,
     author,
-    rating: await ratingFor(env, crawl.id, user?.id ?? null),
+    rating: await ratingFor(env, crawl, user?.id ?? null),
     copyCount: crawl.copy_count,
     ownerVerified: verified,
     slug: crawl.slug,
@@ -624,19 +622,21 @@ export async function copyCrawl(request: Request, env: Env, slug: string): Promi
   throw new HttpError(500, "Could not allocate a share link, please try again");
 }
 
-/** PUT /api/crawls/:slug/rating { stars: 1-5 | null }: logged in, email confirmed, not your own crawl. */
+/**
+ * PUT /api/crawls/:slug/rating { stars: 1-5 | null }: logged in, email confirmed, one per account.
+ * Creators may rate their own crawl; the crawl page says when the average includes it.
+ */
 export async function rateCrawl(
   request: Request,
   env: Env,
   slug: string,
   body: { stars?: unknown },
-): Promise<RatingSummary & { mine: number | null }> {
+): Promise<CrawlRating> {
   const user = await getUser(request, env);
   if (!user) throw new HttpError(401, "Log in to rate this crawl");
   if (!user.emailVerified) throw new HttpError(403, "Confirm your email address to rate crawls", "unverified");
   const crawl = await loadCrawl(env, slug);
   if (crawl.is_public !== 1) throw new HttpError(403, "Only public crawls can be rated");
-  if (crawl.owner_id === user.id) throw new HttpError(403, "You can't rate your own crawl");
   if (body.stars === null) {
     await env.DB.prepare("DELETE FROM ratings WHERE crawl_id = ? AND user_id = ?").bind(crawl.id, user.id).run();
   } else {
@@ -649,7 +649,7 @@ export async function rateCrawl(
       .bind(crawl.id, user.id, stars)
       .run();
   }
-  return ratingFor(env, crawl.id, user.id);
+  return ratingFor(env, crawl, user.id);
 }
 
 const PAGE_SIZE = 20;

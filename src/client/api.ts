@@ -4,7 +4,7 @@ import type {
   Bounds,
   CitySuggestion,
   CommunityPage,
-  RatingSummary,
+  CrawlRating,
   CrawlSummary,
   CreatedCrawl,
   LatLng,
@@ -123,7 +123,7 @@ export const api = {
     return request<CreatedCrawl>(`/api/crawls/${slug}/copy`, { method: "POST" });
   },
   rateCrawl(slug: string, stars: number | null) {
-    return request<RatingSummary & { mine: number | null }>(`/api/crawls/${slug}/rating`, {
+    return request<CrawlRating>(`/api/crawls/${slug}/rating`, {
       method: "PUT",
       body: JSON.stringify({ stars }),
     });

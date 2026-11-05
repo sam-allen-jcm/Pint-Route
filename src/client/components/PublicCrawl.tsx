@@ -77,6 +77,11 @@ export function PublicCrawlPanel({ crawl, onChange }: { crawl: Crawl; onChange: 
           </span>
           <RatingBadge rating={crawl.rating} />
         </div>
+        {crawl.rating.byOwner !== null && (
+          <p className="small muted owner-rated">
+            Includes {crawl.isOwner ? "your own" : "the creator's own"} rating of {crawl.rating.byOwner}★.
+          </p>
+        )}
 
         <div>
           {!user ? (
@@ -88,29 +93,37 @@ export function PublicCrawlPanel({ crawl, onChange }: { crawl: Crawl; onChange: 
           ) : (
             <>
               <span className="small muted">
-                {crawl.rating.mine ? "Your rating (tap again to remove)" : "Rate this crawl"}
+                {crawl.rating.mine
+                  ? "Your rating (tap again to remove)"
+                  : crawl.isOwner
+                    ? "Rate your own crawl"
+                    : "Rate this crawl"}
               </span>
               <StarInput value={crawl.rating.mine} onChange={rate} disabled={busy === "rate"} />
             </>
           )}
         </div>
 
-        <div className="public-actions">
-          <button className="btn btn-primary btn-small" onClick={copy} disabled={busy === "copy"}>
-            {busy === "copy" ? "Copying…" : user ? "Copy to my crawls" : "Log in to copy"}
-          </button>
-          <a className="small-link muted" href={report}>
-            Report
-          </a>
-          {isAdmin && (
-            <button className="text-btn danger" onClick={unpublish} disabled={busy === "unpublish"}>
-              Unpublish (admin)
+        {!crawl.isOwner && (
+          <div className="public-actions">
+            <button className="btn btn-primary btn-small" onClick={copy} disabled={busy === "copy"}>
+              {busy === "copy" ? "Copying…" : user ? "Copy to my crawls" : "Log in to copy"}
             </button>
-          )}
-        </div>
-        <p className="small muted">
-          Copying adds the same pubs, in the same order, to a new crawl of your own that you can change.
-        </p>
+            <a className="small-link muted" href={report}>
+              Report
+            </a>
+            {isAdmin && (
+              <button className="text-btn danger" onClick={unpublish} disabled={busy === "unpublish"}>
+                Unpublish (admin)
+              </button>
+            )}
+          </div>
+        )}
+        {!crawl.isOwner && (
+          <p className="small muted">
+            Copying adds the same pubs, in the same order, to a new crawl of your own that you can change.
+          </p>
+        )}
         {error && (
           <p className="error small" role="alert">
             {error}

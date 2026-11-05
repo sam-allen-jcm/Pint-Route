@@ -73,7 +73,8 @@ export function PrivacyPage() {
             </td>
             <td>
               To show each public crawl's average rating and number of ratings, to let you change your rating, and to
-              stop people rating more than once. We never show who gave which rating
+              stop people rating more than once. We never show who gave which rating, except that a public crawl's
+              page shows when its creator has rated their own crawl, and with how many stars
             </td>
             <td>Contract; legitimate interests (keeping ratings fair)</td>
           </tr>

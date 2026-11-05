@@ -25,6 +25,7 @@ import { StopCard } from "../components/StopCard";
 import { useAuth } from "../auth";
 import { VerifyBanner } from "../components/VerifyBanner";
 import { PublicCrawlPanel, PublishCard } from "../components/PublicCrawl";
+import { CrawlNameEditor } from "../components/CrawlNameEditor";
 import { formatDistance, formatDuration } from "../format";
 import { savedCrawls } from "../storage";
 import { useMediaQuery } from "../useMediaQuery";
@@ -330,7 +331,7 @@ export function CrawlPage() {
 
   const stopsPanel = (
     <section className="stack">
-      {crawl.isPublic && !crawl.isOwner && <PublicCrawlPanel crawl={crawl} onChange={setCrawl} />}
+      {crawl.isPublic && <PublicCrawlPanel crawl={crawl} onChange={setCrawl} />}
       {scheduleLine}
       {meetingSection}
       {stops.length === 0 ? (
@@ -379,6 +380,7 @@ export function CrawlPage() {
 
   const editPanel = (
     <div className="stack edit-panel">
+      <CrawlNameEditor crawl={crawl} editToken={editToken} onSaved={setCrawl} />
       <ScheduleEditor crawl={crawl} editToken={editToken} onSaved={setCrawl} />
       {crawl.isOwner && <PublishCard crawl={crawl} onChange={setCrawl} />}
       <EditStops
@@ -468,6 +470,12 @@ export function CrawlPage() {
                     title={canEdit ? "Tap to rename" : undefined}
                   >
                     {crawl.name}
+                    {canEdit && (
+                      <span className="title-pencil" aria-hidden>
+                        {" "}
+                        ✎
+                      </span>
+                    )}
                   </h1>
                 )}
                 {canEdit ? (

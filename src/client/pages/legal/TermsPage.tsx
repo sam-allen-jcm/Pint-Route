@@ -102,7 +102,8 @@ export function TermsPage() {
         </li>
         <li>
           Logged-in users with a confirmed email can give a public crawl a <strong>1 to 5 star rating</strong>, one
-          per account, and change or remove it. You can't rate your own crawls. Rate honestly: don't use extra
+          per account, and change or remove it. You can rate your own crawls too; when the creator has, the crawl's
+          page says the average includes their rating. Rate honestly: don't use extra
           accounts, swap ratings or pay or ask others to rate, to push a crawl up or down. Ratings are people's
           opinions, not ours.
         </li>

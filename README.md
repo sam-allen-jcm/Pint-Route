@@ -293,7 +293,8 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
   public crawl don't see its notes or ticked-off dates. Anyone logged in can **copy** a public
   crawl's route into their own account.
 - **Ratings**: 1–5 stars, one per account (changeable; tap your rating again to remove it),
-  confirmed email required, not on your own crawls. "Top rated" sorts by
+  confirmed email required. Creators can rate their own crawl; the crawl page then says the
+  average includes it. "Top rated" sorts by
   `(sum + 6) / (count + 2)`, which pulls an average towards 3 stars until a crawl has a few
   ratings.
 - **Moderation**: public crawls have a Report link (emails legal@pintroute.com). Accounts in
