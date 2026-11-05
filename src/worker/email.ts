@@ -115,3 +115,42 @@ export function passwordResetEmail(name: string, link: string): Omit<Email, "to"
 </html>`,
   };
 }
+
+/** Security notice after an account change, sent to the address that was on the account. */
+export function accountNoticeEmail(
+  name: string,
+  change: "password" | "email" | "deleted",
+  appUrl: string,
+  newEmail?: string,
+): Omit<Email, "to"> {
+  const what = {
+    password: {
+      subject: "Your Pint Route password was changed",
+      line: "The password for your Pint Route account was just changed, and other devices were logged out.",
+    },
+    email: {
+      subject: "Your Pint Route email address was changed",
+      line: `The email address on your Pint Route account was just changed to ${newEmail ?? "a new address"}. We won't send account emails here any more.`,
+    },
+    deleted: {
+      subject: "Your Pint Route account was deleted",
+      line: "Your Pint Route account, your crawls and your ratings have been deleted, as you asked. Sorry to see you go!",
+    },
+  }[change];
+  const help =
+    change === "deleted"
+      ? "If you didn't do this, contact legal@pintroute.com straight away."
+      : "If this wasn't you, reset your password straight away and contact legal@pintroute.com.";
+  const link = change === "deleted" ? appUrl : `${appUrl}/forgot-password`;
+  return {
+    subject: what.subject,
+    text: [`Hi ${name},`, "", what.line, "", help, "", link, "", "Cheers,", "Pint Route"].join("\n"),
+    html: layout(
+      escapeHtml(name),
+      `<p style="margin:0 0 20px">${escapeHtml(what.line)}</p>`,
+      change === "deleted" ? "Visit Pint Route" : "Reset my password",
+      link,
+      escapeHtml(help),
+    ),
+  };
+}

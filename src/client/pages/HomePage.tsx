@@ -1,32 +1,21 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import type { CrawlSummary } from "../../shared/types";
+import type { CommunityCrawl } from "../../shared/types";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { SaveCrawlAccount } from "../components/SaveCrawlAccount";
+import { CommunityList } from "../components/CommunityList";
 import { SiteFooter } from "../components/SiteFooter";
+import { TopNav } from "../components/TopNav";
 import { VerifyBanner } from "../components/VerifyBanner";
 import { CityPicker, type PickedCity } from "../components/CityPicker";
 import { DURATIONS, NO_DURATION_LABEL, durationLabel } from "../components/ScheduleEditor";
 import { countries, defaultCountry, rememberCountry } from "../countries";
 import { savedCrawls } from "../storage";
 
-interface ListItem {
-  slug: string;
-  name: string;
-  detail: string | null;
-  deviceOnly: boolean;
-}
-
-function summaryDetail(c: CrawlSummary): string {
-  if (c.stopCount === 0) return "No stops yet";
-  const stops = `${c.stopCount} ${c.stopCount === 1 ? "stop" : "stops"}`;
-  return c.visitedCount ? `${stops} · ${c.visitedCount} visited` : stops;
-}
-
 export function HomePage() {
   const navigate = useNavigate();
-  const { user, isAdmin, logout } = useAuth();
+  const { user } = useAuth();
   const [name, setName] = useState("");
   const [countryCode, setCountryCode] = useState(defaultCountry);
   const [city, setCity] = useState<PickedCity | null>(null);
@@ -39,33 +28,31 @@ export function HomePage() {
   const [error, setError] = useState<string | null>(null);
   /** Logged out: after the details, ask them to sign up (or log in) to save the crawl. */
   const [step, setStep] = useState<"details" | "account">("details");
-  const [accountCrawls, setAccountCrawls] = useState<CrawlSummary[] | null>(null);
+  const [popular, setPopular] = useState<CommunityCrawl[] | null>(null);
+  const [popularCountry, setPopularCountry] = useState<string | null>(null);
+  // Crawls made as a guest before accounts were required (only kept on this device).
+  const deviceCrawls = user === null ? savedCrawls.list() : [];
 
+  // Top public crawls, from the country last used on this device first.
   useEffect(() => {
-    if (!user) {
-      setAccountCrawls(null);
-      return;
-    }
     let cancelled = false;
+    const home = defaultCountry();
     api
-      .myCrawls()
-      .then((list) => !cancelled && setAccountCrawls(list))
-      .catch(() => !cancelled && setAccountCrawls([]));
+      .community({ sort: "top", country: home, limit: 5 })
+      .then(async (r) => {
+        if (r.crawls.length) return { crawls: r.crawls, country: home };
+        return { crawls: (await api.community({ sort: "top", limit: 5 })).crawls, country: null };
+      })
+      .then((r) => {
+        if (cancelled) return;
+        setPopular(r.crawls);
+        setPopularCountry(r.country);
+      })
+      .catch(() => !cancelled && setPopular([]));
     return () => {
       cancelled = true;
     };
-  }, [user]);
-
-  // Account crawls first, then any still only saved on this device.
-  const inAccount = new Set(accountCrawls?.map((c) => c.slug));
-  const items: ListItem[] = [
-    ...(accountCrawls ?? []).map((c) => ({ slug: c.slug, name: c.name, detail: summaryDetail(c), deviceOnly: false })),
-    ...savedCrawls
-      .list()
-      .filter((c) => !inAccount.has(c.slug))
-      .map((c) => ({ slug: c.slug, name: c.name, detail: null, deviceOnly: Boolean(user) })),
-  ];
-  const loadingList = Boolean(user) && accountCrawls === null;
+  }, []);
 
   /** Saves the crawl to the (now logged-in) account and opens it. */
   async function saveCrawl() {
@@ -100,34 +87,7 @@ export function HomePage() {
 
   return (
     <main className="page narrow">
-      <nav className="account-bar" aria-label="Account">
-        {user === undefined ? (
-          <span />
-        ) : user ? (
-          <>
-            <span className="account-name">
-              Hi, <strong>{user.name}</strong>
-            </span>
-            {isAdmin && (
-              <Link to="/stats" className="text-btn">
-                Stats
-              </Link>
-            )}
-            <button className="text-btn" onClick={() => logout()}>
-              Log out
-            </button>
-          </>
-        ) : (
-          <>
-            <Link to="/login" className="text-btn">
-              Log in
-            </Link>
-            <Link to="/register" className="btn btn-small btn-ghost">
-              Sign up
-            </Link>
-          </>
-        )}
-      </nav>
+      <TopNav />
 
       <header className="hero">
         <div className="sign">
@@ -226,28 +186,49 @@ export function HomePage() {
         )}
       </section>
 
+      {user && (
+        <Link to="/account" className="crawl-link my-crawls-link">
+          <span className="crawl-link-text">
+            <span className="crawl-link-name">My crawls</span>
+            <span className="crawl-link-detail">Edit, share, delete or make your crawls public</span>
+          </span>
+          <span className="chev" aria-hidden>
+            ›
+          </span>
+        </Link>
+      )}
+
       <section className="stack">
-        <h2 className="section-title">Your crawls</h2>
-        {loadingList ? (
-          <p className="muted">Loading your crawls…</p>
-        ) : items.length === 0 ? (
+        <div className="section-head">
+          <h2 className="section-title">
+            Popular in the community
+            {popularCountry && (
+              <span className="muted small"> · {countries().find((c) => c.code === popularCountry)?.name}</span>
+            )}
+          </h2>
+          <Link to="/community" className="text-btn">
+            See all ›
+          </Link>
+        </div>
+        {popular === null ? (
+          <p className="muted">Loading…</p>
+        ) : popular.length === 0 ? (
           <p className="muted">
-            {user ? "No crawls yet. Start one above." : "Log in to see your crawls, or start one above."}
+            No public crawls yet. Make one of yours public and it'll show up here for everyone to rate and copy.
           </p>
         ) : (
+          <CommunityList crawls={popular} />
+        )}
+      </section>
+
+      {deviceCrawls.length > 0 && (
+        <section className="stack device-crawls">
+          <h2 className="section-title">On this device</h2>
           <ul className="crawl-list">
-            {items.map((c) => (
+            {deviceCrawls.map((c) => (
               <li key={c.slug}>
                 <Link to={`/c/${c.slug}`} className="crawl-link">
-                  <span className="crawl-link-text">
-                    <span className="crawl-link-name">{c.name}</span>
-                    {(c.detail || c.deviceOnly) && (
-                      <span className="crawl-link-detail">
-                        {c.detail}
-                        {c.deviceOnly && "On this device only"}
-                      </span>
-                    )}
-                  </span>
+                  <span className="crawl-link-name">{c.name}</span>
                   <span className="chev" aria-hidden>
                     ›
                   </span>
@@ -255,13 +236,12 @@ export function HomePage() {
               </li>
             ))}
           </ul>
-        )}
-        {user === null && items.length > 0 && (
           <p className="muted small">
-            <Link to="/register">Create an account</Link> to keep these crawls if you lose or change your phone.
+            <Link to="/login">Log in</Link> or <Link to="/register">sign up</Link> to move these into an account, so you
+            don't lose them.
           </p>
-        )}
-      </section>
+        </section>
+      )}
       <SiteFooter />
     </main>
   );

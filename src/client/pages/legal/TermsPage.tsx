@@ -57,8 +57,14 @@ export function TermsPage() {
         crawl. Give us accurate details, including an email address you can receive mail at, and keep your password
         secret: you're responsible for what happens under your account. Your crawls can only be shared with others once
         you've confirmed your email address using the link we send you. Tell us straight away at{" "}
-        <LegalEmail email={email} /> if you think someone else has accessed it. You can ask us to delete your account at
-        any time.
+        <LegalEmail email={email} /> if you think someone else has accessed it. You can delete your account at any time
+        from <strong>My account</strong>.
+      </p>
+      <p>
+        Your <strong>username</strong> is public: it's shown on any crawl you make public. If you don't choose one, we
+        pick one for you, and you can change it in My account. Don't choose a username that is offensive, misleading,
+        impersonates someone else (including {service} or a pub), or infringes anyone's rights. We may change or remove
+        a username that breaks this rule.
       </p>
 
       <h2>5. Your crawls and content</h2>
@@ -79,6 +85,36 @@ export function TermsPage() {
           Don't use crawl names or notes to advertise, spam or post web links. Links aren't allowed in names or notes.
         </li>
         <li>We may remove content, or crawls, that break these terms.</li>
+      </ul>
+
+      <h2>5a. Public crawls, the Community and ratings</h2>
+      <ul>
+        <li>
+          Crawls are private unless you choose to <strong>make one public</strong>. A public crawl is listed in the
+          Community area, where anyone (with or without an account) can see its name, town, meeting point and pubs,
+          with your username. Your notes and ticked-off pubs aren't shown to people who can't edit it. You can make it
+          private again at any time.
+        </li>
+        <li>
+          By making a crawl public you allow other users to view it, rate it and <strong>copy its route</strong> (the
+          pubs, their order, the town and meeting point) into their own accounts. Copies belong to the people who made
+          them and aren't affected if you later change, make private or delete your crawl, or delete your account.
+        </li>
+        <li>
+          Logged-in users with a confirmed email can give a public crawl a <strong>1 to 5 star rating</strong>, one
+          per account, and change or remove it. You can't rate your own crawls. Rate honestly: don't use extra
+          accounts, swap ratings or pay or ask others to rate, to push a crawl up or down. Ratings are people's
+          opinions, not ours.
+        </li>
+        <li>
+          We decide what appears in the Community and how it's ordered. We may remove a crawl from the Community, or
+          remove ratings, that break these terms or that we reasonably think are misleading or inappropriate. To report
+          a public crawl, use its Report link or email <LegalEmail email={email} />.
+        </li>
+        <li>
+          Pubs on public crawls are suggestions from other users. We don't check or endorse them, and their details
+          come from Google Maps.
+        </li>
       </ul>
 
       <h2>6. Acceptable use</h2>
@@ -155,7 +191,7 @@ export function TermsPage() {
 
       <h2>10. Suspending or ending your use</h2>
       <p>
-        You can stop using {service} at any time. We may suspend or close an account, or remove crawls, if we
+        You can stop using {service} at any time, and delete your account from My account. We may suspend or close an account, or remove crawls, if we
         reasonably believe these terms have been broken, or to protect the service, its users or others.
       </p>
 

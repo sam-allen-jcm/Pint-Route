@@ -22,7 +22,12 @@ import {
   updateCrawl,
   reorderStops,
   updateStop,
+  copyCrawl,
+  listCommunity,
+  rateCrawl,
+  setPublic,
 } from "./crawls";
+import { changeEmail, changePassword, deleteAccount, exportData, updateProfile } from "./account";
 import type { Env } from "./env";
 import { getPhotoUri, getPlace, isPlaceId, searchPlaces, suggestCities, suggestPlaces, walkingRoute } from "./google";
 import { HttpError, json, readJson } from "./http";
@@ -65,7 +70,7 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
 
   // ---- Places (live from Google, short-lived cache) ----
   // Anything that may call Google is rate-limited per IP to protect the API bill.
-  const googleBacked = path.startsWith("/api/places") || /^\/api\/crawls\/[a-z0-9]+\/(route|stops)$/.test(path);
+  const googleBacked = path.startsWith("/api/places") || path === "/api/community" || /^\/api\/crawls\/[a-z0-9]+\/(route|stops)$/.test(path);
   if (googleBacked && env.GOOGLE_LIMITER) {
     const ip = request.headers.get("CF-Connecting-IP") ?? "local";
     if (!(await env.GOOGLE_LIMITER.limit({ key: ip })).success) {
@@ -154,6 +159,34 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
     const user = await requireUser(request, env);
     return json({ crawls: await listMyCrawls(env, user.id) });
   }
+  if (path === "/api/me" && method === "PATCH") {
+    const body = await readJson(request);
+    const res = await updateProfile(request, env, body);
+    if ("username" in body) track("username_changed");
+    return res;
+  }
+  if (path === "/api/me/password" && method === "POST") {
+    const res = await changePassword(request, env, ctx, await readJson(request));
+    track("password_changed");
+    return res;
+  }
+  if (path === "/api/me/email" && method === "POST") {
+    const res = await changeEmail(request, env, ctx, await readJson(request));
+    track("email_changed");
+    return res;
+  }
+  if (path === "/api/me/export" && method === "GET") {
+    track("data_exported");
+    return exportData(request, env);
+  }
+  if (path === "/api/me/delete" && method === "POST") {
+    const res = await deleteAccount(request, env, ctx, await readJson(request));
+    track("account_deleted");
+    return res;
+  }
+  if (path === "/api/community" && method === "GET") {
+    return json(await listCommunity(env, url.searchParams), { headers: { "Cache-Control": "no-store" } });
+  }
   if (path === "/api/me/claim" && method === "POST") {
     const user = await requireUser(request, env);
     return json({ claimed: await claimCrawls(env, user.id, await readJson(request)) });
@@ -220,6 +253,30 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
       track("crawl_deleted");
       return json({ ok: true });
     }
+  }
+  if ((m = path.match(new RegExp(`^/api/crawls/${SLUG}/public$`))) && method === "PUT") {
+    const body = await readJson(request);
+    await setPublic(request, env, m[1], body);
+    track(body.isPublic ? "crawl_published" : "crawl_unpublished");
+    return json(await getCrawl(request, env, m[1]));
+  }
+  if ((m = path.match(new RegExp(`^/api/crawls/${SLUG}/copy$`))) && method === "POST") {
+    const copier = await getUser(request, env);
+    if (copier && env.CREATE_LIMITER && !(await env.CREATE_LIMITER.limit({ key: String(copier.id) })).success) {
+      throw new HttpError(429, "That's a lot of crawls! Please wait a minute before copying another.");
+    }
+    const created = await copyCrawl(request, env, m[1]);
+    track("crawl_copied");
+    return json(created, { status: 201 });
+  }
+  if ((m = path.match(new RegExp(`^/api/crawls/${SLUG}/rating$`))) && method === "PUT") {
+    const rater = await getUser(request, env);
+    if (rater && env.CREATE_LIMITER && !(await env.CREATE_LIMITER.limit({ key: `rate:${rater.id}` })).success) {
+      throw new HttpError(429, "Please wait a minute before rating again.");
+    }
+    const rating = await rateCrawl(request, env, m[1], await readJson(request));
+    track("crawl_rated");
+    return json(rating);
   }
   if ((m = path.match(new RegExp(`^/api/crawls/${SLUG}/route$`))) && method === "GET") {
     const param = url.searchParams.get("stops");

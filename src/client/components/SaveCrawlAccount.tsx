@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth";
+import { UsernameField, usernameOk } from "./UsernameField";
 
 interface Props {
   crawlName: string;
@@ -17,6 +18,7 @@ export function SaveCrawlAccount({ crawlName, onSignedIn, onBack }: Props) {
   const { login, register } = useAuth();
   const [mode, setMode] = useState<"register" | "login">("register");
   const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -30,7 +32,7 @@ export function SaveCrawlAccount({ crawlName, onSignedIn, onBack }: Props) {
     setBusy(true);
     setError(null);
     try {
-      if (isRegister) await register(name.trim(), email.trim(), password);
+      if (isRegister) await register(name.trim(), email.trim(), password, username.trim().replace(/^@/, ""));
       else await login(email.trim(), password);
     } catch (err) {
       setError((err as Error).message);
@@ -72,6 +74,7 @@ export function SaveCrawlAccount({ crawlName, onSignedIn, onBack }: Props) {
           <input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" maxLength={40} required />
         </label>
       )}
+      {isRegister && <UsernameField value={username} onChange={setUsername} />}
       <label className="field">
         <span>Email</span>
         <input
@@ -139,7 +142,7 @@ export function SaveCrawlAccount({ crawlName, onSignedIn, onBack }: Props) {
 
       <button
         className="btn btn-primary btn-block"
-        disabled={busy || !email.trim() || !password || (isRegister && (!name.trim() || !agreed || password.length < 8))}
+        disabled={busy || !email.trim() || !password || (isRegister && (!name.trim() || !agreed || password.length < 8 || !usernameOk(username)))}
       >
         {busy ? "Pulling a pint…" : isRegister ? "Create account and save crawl" : "Log in and save crawl"}
       </button>

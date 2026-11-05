@@ -10,4 +10,4 @@ export const LEGAL = {
 };
 
 /** Shown as "Last updated" on every legal page. */
-export const LEGAL_UPDATED = "31 October 2026";
+export const LEGAL_UPDATED = "5 November 2026";

@@ -277,6 +277,28 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
   device. The response is identical, and equally fast, whether or not the email has an account.
 - **Not built yet:** changing email or password while logged in, and deleting an account.
 
+### My account and Community
+
+- **My account** (`/account`): the user's crawls (open, edit, share, make public/private,
+  delete), username and name, email change (needs the password; the new address must be
+  confirmed and the old one gets a notice), password change (signs out other devices),
+  **Download my data** (JSON) and **Delete account** (password + confirmation; deletes the
+  account, crawls, stops and ratings at once and emails a notice).
+- **Usernames** are public and shown on public crawls instead of names. Optional at sign-up
+  (blank = generated, e.g. `HoppyBadger42`), changeable later, unique ignoring case. Rules
+  in `src/shared/username.ts`.
+- **Public crawls**: the owner (email confirmed, at least 2 pubs) can switch a crawl to public
+  in its Edit tab or in My account. Public crawls appear in **Community** (`/community`, top
+  rated or newest, country filter, name search) and on the home page. People who can't edit a
+  public crawl don't see its notes or ticked-off dates. Anyone logged in can **copy** a public
+  crawl's route into their own account.
+- **Ratings**: 1–5 stars, one per account (changeable; tap your rating again to remove it),
+  confirmed email required, not on your own crawls. "Top rated" sorts by
+  `(sum + 6) / (count + 2)`, which pulls an average towards 3 stars until a crawl has a few
+  ratings.
+- **Moderation**: public crawls have a Report link (emails legal@pintroute.com). Accounts in
+  `ADMIN_EMAILS` see an "Unpublish (admin)" button on public crawls.
+
 ### Sharing & editing
 
 - Creating a crawl returns a random public **slug** (`/c/<slug>`) and a random private
@@ -308,7 +330,16 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 | `POST /api/auth/reset` | – | `{ token, password }` → sets the new password, ends other sessions, logs in |
 | `POST /api/auth/verify` | – | `{ token }` → confirms the email address |
 | `POST /api/auth/resend-verification` | session | Sends a new confirmation link (rate-limited) |
-| `GET /api/me/crawls` | session | The user's crawls, newest first |
+| `GET /api/me/crawls` | session | The user's crawls, newest first (with `isPublic`, `rating`) |
+| `PATCH /api/me` | session | `{ name?, username? }` |
+| `POST /api/me/password` | session | `{ currentPassword, newPassword }`, signs out other devices |
+| `POST /api/me/email` | session | `{ password, email }`, new address must be confirmed |
+| `GET /api/me/export` | session | Download of all the account's data (JSON) |
+| `POST /api/me/delete` | session | `{ password }`, deletes the account and everything in it |
+| `GET /api/community?sort=top\|new&country=&q=&page=` | – | Public crawls |
+| `PUT /api/crawls/:slug/public` | owner (admin may unpublish) | `{ isPublic }` |
+| `POST /api/crawls/:slug/copy` | session | Copies a public crawl's route into the user's account |
+| `PUT /api/crawls/:slug/rating` | session, confirmed | `{ stars: 1-5 \| null }` |
 | `POST /api/me/claim` | session | `{ crawls: [{ slug, editToken }] }` → moves guest crawls into the account |
 | `POST /api/crawls` | session | `{ name, countryCode?, cityPlaceId?, sessionToken?, startsAt?, minutesPerStop? }` → `{ slug, editToken }` owned by the user |
 | `GET /api/crawls/:slug` | optional | Crawl + stops (`canEdit` from the token or ownership, `isOwner`, `ownerVerified`). 403 `unverified` for non-editors until the owner confirms their email |

@@ -3,6 +3,8 @@ import type {
   CrawlRoute,
   Bounds,
   CitySuggestion,
+  CommunityPage,
+  RatingSummary,
   CrawlSummary,
   CreatedCrawl,
   LatLng,
@@ -56,11 +58,11 @@ export const api = {
       keepalive: true,
     }).catch(() => undefined);
   },
-  register(name: string, email: string, password: string) {
+  register(name: string, email: string, password: string, username: string) {
     return request<{ user: User }>("/api/auth/register", {
       method: "POST",
-      // The form won't submit until the age/terms box is ticked.
-      body: JSON.stringify({ name, email, password, acceptTerms: true }),
+      // The form won't submit until the age/terms box is ticked. A blank username gets one generated.
+      body: JSON.stringify({ name, email, password, username: username.trim() || undefined, acceptTerms: true }),
     }).then((r) => r.user);
   },
   login(email: string, password: string) {
@@ -86,6 +88,45 @@ export const api = {
   },
   logout() {
     return request<{ ok: true }>("/api/auth/logout", { method: "POST" });
+  },
+  updateProfile(patch: { name?: string; username?: string }) {
+    return request<{ user: User }>("/api/me", { method: "PATCH", body: JSON.stringify(patch) }).then((r) => r.user);
+  },
+  changePassword(currentPassword: string, newPassword: string) {
+    return request<{ ok: true }>("/api/me/password", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+  },
+  changeEmail(password: string, email: string) {
+    return request<{ user: User }>("/api/me/email", { method: "POST", body: JSON.stringify({ password, email }) }).then(
+      (r) => r.user,
+    );
+  },
+  async exportData(): Promise<Blob> {
+    const res = await fetch("/api/me/export");
+    if (!res.ok) throw new ApiError(res.status, "Couldn't download your data. Please try again.");
+    return res.blob();
+  },
+  deleteAccount(password: string) {
+    return request<{ ok: true }>("/api/me/delete", { method: "POST", body: JSON.stringify({ password }) });
+  },
+  community(opts: { sort?: "top" | "new"; country?: string; q?: string; page?: number; limit?: number } = {}) {
+    const params = new URLSearchParams();
+    for (const [k, v] of Object.entries(opts)) if (v !== undefined && v !== "") params.set(k, String(v));
+    return request<CommunityPage>(`/api/community?${params}`);
+  },
+  setPublic(slug: string, isPublic: boolean) {
+    return request<Crawl>(`/api/crawls/${slug}/public`, { method: "PUT", body: JSON.stringify({ isPublic }) });
+  },
+  copyCrawl(slug: string) {
+    return request<CreatedCrawl>(`/api/crawls/${slug}/copy`, { method: "POST" });
+  },
+  rateCrawl(slug: string, stars: number | null) {
+    return request<RatingSummary & { mine: number | null }>(`/api/crawls/${slug}/rating`, {
+      method: "PUT",
+      body: JSON.stringify({ stars }),
+    });
   },
   myCrawls() {
     return request<{ crawls: CrawlSummary[] }>("/api/me/crawls").then((r) => r.crawls);

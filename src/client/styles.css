@@ -1774,3 +1774,193 @@ input[type="time"]::-webkit-date-and-time-value {
 .quota-bar.danger {
   background: var(--red);
 }
+
+/* ---------- top nav, community, ratings, account ---------- */
+.nav-spacer,
+.nav-brand {
+  margin-right: auto;
+}
+.account-bar a.active:not(.btn) {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.rating-badge {
+  white-space: nowrap;
+}
+.star {
+  color: var(--line);
+}
+.star.on {
+  color: var(--amber);
+}
+.star-input {
+  display: inline-flex;
+  gap: 2px;
+}
+.star-input .star {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  line-height: 1;
+  padding: 4px;
+  cursor: pointer;
+}
+.star-input .star:disabled {
+  cursor: default;
+}
+.community-card .crawl-link-detail + .crawl-link-detail {
+  margin-top: 2px;
+}
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.community-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  margin: 12px 0 16px;
+}
+.community-filters .search-field {
+  grid-column: 1 / -1;
+}
+.public-panel {
+  margin: 0 0 16px;
+}
+.public-panel .stack {
+  gap: 10px;
+}
+.public-by {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.public-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+}
+.switch-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.switch-row input {
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  flex: none;
+  accent-color: var(--sign-green);
+}
+.badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  vertical-align: middle;
+}
+.badge.public {
+  background: var(--sign-green);
+  border-color: var(--sign-green);
+  color: #fff;
+}
+.account-crawl {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+}
+.account-crawl-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+.account-crawl-head a {
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-decoration: none;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.account-crawl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 6px;
+  margin: 6px -6px -6px;
+}
+.account-crawl-actions .text-btn {
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+.account-section h2 {
+  font-size: 1.1rem;
+}
+.account-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.account-row:first-of-type {
+  border-top: none;
+}
+.account-row-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.account-row-label small {
+  display: block;
+  color: var(--muted);
+}
+.danger-zone {
+  border-color: var(--red);
+}
+.btn-danger {
+  background: var(--red);
+  color: #fff;
+  border-color: var(--red);
+}
+.success {
+  color: var(--sign-green-2);
+  font-weight: 600;
+}
+.community-header h1 {
+  font-size: 1.8rem;
+  margin: 10px 0 4px;
+}
+.load-more {
+  margin-top: 14px;
+}
+.my-crawls-link {
+  margin: -8px 0 24px;
+}
+.device-crawls {
+  margin-top: 28px;
+}
+.account-bar > * {
+  white-space: nowrap;
+}
+@media (max-width: 420px) {
+  .account-bar:has(.nav-brand) .nav-brand-text {
+    display: none;
+  }
+  .account-bar {
+    gap: 4px;
+  }
+}
+.text-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

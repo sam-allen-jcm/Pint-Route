@@ -60,11 +60,12 @@ pages and say so in your reply:
 
 | Data | Where | Retention |
 | --- | --- | --- |
-| Account: email, display name, PBKDF2 password hash, terms version and acceptance time, email verified time | D1 `users` | Until deletion is requested (by email; no self-serve deletion yet) |
+| Account: email, display name (private), username (public), PBKDF2 password hash, terms version and acceptance time, email verified time | D1 `users` | Until the user deletes the account (My account → `POST /api/me/delete`, removes account, crawls, stops, ratings, sessions, tokens) or asks by email. D1 Time Travel backups up to 30 days |
+| Ratings: user id, crawl id, 1–5 stars, timestamps | D1 `ratings` | Until removed, crawl deleted or account deleted. Only average and count are ever shown |
 | Email verification tokens (SHA-256, expiry) | D1 `email_verifications` | 3 days validity; deleted when used, superseded, or (expired) when anyone is next sent a link |
 | Sessions (SHA-256 of cookie token, expiry) | D1 `sessions`, cookie `pr_session` | 30 days / logout / password reset |
 | Password reset tokens (SHA-256, expiry) | D1 `password_resets` | 1 hour validity; deleted when used or superseded |
-| Crawls: name, Place IDs, order, visited dates, notes (only logged-in editors can write them), country code, area Place ID, meeting point Place ID, start date/time, minutes per stop, owner | D1 `crawls`, `stops` | Until deleted. An account is required to create one. Public to anyone with the share link once the owner's email is verified (before that, editors only, and link previews are generic). Link previews (`src/worker/sharePreview.ts`) expose the name, town, pub count and start date/time to messaging apps |
+| Crawls: name, Place IDs, order, visited dates, notes (only logged-in editors can write them), country code, area Place ID, meeting point Place ID, start date/time, minutes per stop, owner | D1 `crawls`, `stops` | Until deleted. An account is required to create one. Public to anyone with the share link once the owner's email is verified (before that, editors only, and link previews are generic). If the owner makes it public (`crawls.is_public`, `published_at`), it's listed in `/community` with their username; notes and visit dates are then stripped for non-editors. Others can copy the route (`copy_count`); copies are theirs. Link previews (`src/worker/sharePreview.ts`) expose the name, town, pub count and start date/time to messaging apps |
 | Guest edit tokens, last country | Browser localStorage `pint-route:crawls`, `pint-route:last-country` | Until cleared |
 | Location, "near me" | Sent to Worker and Google, not stored; rounded copy cached ≤5 min | Transient |
 | Location, "Show my location" (live dot on map) | Browser only (`watchPosition`); never sent to the Worker. Google sees map tile requests for the area shown | Until switched off / page closed |
@@ -94,8 +95,14 @@ in crawl names, notes and display names (`src/shared/content.ts`); rate limits c
 Google-backed endpoints (`GOOGLE_LIMITER`, per IP) and crawl creation (`CREATE_LIMITER`, per user).
 Accounts that existed before verification was added were marked verified by migration 0009.
 
+**Community:** usernames are checked by `src/shared/username.ts` (format, reserved names, a small
+block list); blank at sign-up means one is generated, and older accounts get one on first use.
+Public crawls need the owner's email confirmed and at least 2 pubs. Ratings need a confirmed email
+and can't be on your own crawl. Moderation is by hand: the Report link emails legal@pintroute.com
+and admins (ADMIN_EMAILS) get an "Unpublish" button on public crawls.
+
 ## Known gaps to close
 
-- No self-serve **account deletion** or **data export** yet. Both are handled by email to
-  legal@pintroute.com. Building them is the next privacy improvement.
+- Moderation is manual (Report link by email, admin Unpublish). No admin tool for renaming
+  usernames yet; do it in D1 if needed.
 - No cleanup job yet for long-unused guest crawls (the policy only says we *may* delete them).

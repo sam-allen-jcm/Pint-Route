@@ -155,7 +155,7 @@ add risk), or paywalling core features.
 
 ### What to build first (when we get there)
 
-1. Self-serve account deletion and data export (needed anyway for the app stores)
+1. ~~Self-serve account deletion and data export~~ (done)
 2. Stripe on the web, with a `purchases` table and a "Party Pack" flag per crawl
 3. RSVPs and the group list (the most-wanted Party Pack feature, and useful free in a basic form)
 4. Venue "deals" (curated by us at first, not self-serve)
@@ -168,8 +168,12 @@ registration once over the threshold. Get a solicitor to review.
 
 ## 3. Backlog (smaller items)
 
-- [ ] **Self-serve account deletion and data export** (privacy gap, needed for the App Store)
-- [ ] **Change email and password** while logged in
+- [x] **Self-serve account deletion and data export** (done: My account)
+- [x] **Change email and password** while logged in (done: My account)
+- [x] **Community**: public crawls, usernames, 1–5 star ratings, copy a crawl (done)
+- [ ] **Public profile pages** (`/u/<username>` listing someone's public crawls)
+- [ ] **Moderation tools**: an admin list of reported/public crawls, rename usernames
+- [ ] **Community near me**: sort public crawls by distance from the user
 - [ ] **Clean-up job** for long-unused guest crawls (Cron Trigger; the Privacy Policy already
       says we *may* delete them)
 - [ ] **Per-crawl preview image:** a generated image with the crawl name and stop count (e.g.

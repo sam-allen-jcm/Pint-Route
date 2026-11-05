@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth";
 import { SiteFooter } from "../components/SiteFooter";
+import { UsernameField, usernameOk } from "../components/UsernameField";
 
 /** Only allow redirects back into this app (no open redirects). */
 function safeNext(next: string | null): string {
@@ -15,6 +16,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const next = safeNext(params.get("next"));
 
   const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -32,7 +34,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
     setBusy(true);
     setError(null);
     try {
-      if (isRegister) await register(name.trim(), email.trim(), password);
+      if (isRegister) await register(name.trim(), email.trim(), password, username.trim().replace(/^@/, ""));
       else await login(email.trim(), password);
       navigate(next, { replace: true });
     } catch (err) {
@@ -70,6 +72,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
               />
             </label>
           )}
+          {isRegister && <UsernameField value={username} onChange={setUsername} />}
           <label className="field">
             <span>Email</span>
             <input
@@ -137,7 +140,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
 
           <button
             className="btn btn-primary btn-block"
-            disabled={busy || !email.trim() || !password || (isRegister && (!name.trim() || !agreed))}
+            disabled={busy || !email.trim() || !password || (isRegister && (!name.trim() || !agreed || !usernameOk(username)))}
           >
             {busy ? "One moment…" : isRegister ? "Create account" : "Log in"}
           </button>

@@ -31,7 +31,7 @@ export function PrivacyPage() {
           <tr>
             <td>
               <strong>Account details</strong>: your name, email address, password (stored only as a salted, one-way
-              hash we can't reverse), and whether and when you confirmed your email address
+              hash we can't reverse), your username, and whether and when you confirmed your email address
             </td>
             <td>
               To create and run your account, log you in, let you reset your password, and check your email address is
@@ -54,6 +54,28 @@ export function PrivacyPage() {
             </td>
             <td>To provide the crawl planner, and to sync your crawls across your devices if you have an account</td>
             <td>Contract</td>
+          </tr>
+          <tr>
+            <td>
+              <strong>Your username and public crawls</strong>: your username (which you choose, or we generate), and
+              which crawls you've made public and when
+            </td>
+            <td>
+              To show your public crawls in the Community area with your username, so others can find, rate and copy
+              them. Your name and email are never shown publicly
+            </td>
+            <td>Contract</td>
+          </tr>
+          <tr>
+            <td>
+              <strong>Ratings</strong>: the star rating (1 to 5) you give a public crawl, linked to your account, and
+              when you gave or changed it
+            </td>
+            <td>
+              To show each public crawl's average rating and number of ratings, to let you change your rating, and to
+              stop people rating more than once. We never show who gave which rating
+            </td>
+            <td>Contract; legitimate interests (keeping ratings fair)</td>
           </tr>
           <tr>
             <td>
@@ -151,7 +173,7 @@ export function PrivacyPage() {
         solely on automated processing.
       </p>
 
-      <h2>3. Crawls you share</h2>
+      <h2>3. Crawls you share or make public</h2>
       <p>
         Every crawl has a share link. It only starts working once the account that created the crawl has confirmed its
         email address; until then, only people who can edit the crawl can open it. After that,{" "}
@@ -159,6 +181,16 @@ export function PrivacyPage() {
         meeting point, the start date and time, the pubs on it, which ones have been ticked off and when, and any notes. Don't put anything in a crawl you wouldn't
         want the people you share it with to see. Anyone with the private edit link can change the crawl, so only share
         that with people you trust.
+      </p>
+      <p>
+        Crawls are private unless you <strong>make one public</strong>. A public crawl is listed in the Community area
+        for <strong>anyone</strong> to see, with or without an account, and can be found by its name, country and
+        town. It shows the crawl's name, town, meeting point and pubs, its average rating, and your{" "}
+        <strong>username</strong> (not your name or email). Your notes, ticked-off pubs and visit dates are hidden from
+        everyone who can't edit the crawl, including people you've sent the share link to, because they could show
+        where you were and when. Other users can <strong>copy</strong> a public crawl's route (its pubs, their order,
+        town and meeting point) into their own account; those copies are theirs and stay if you later make your crawl
+        private, delete it or delete your account. You can make a crawl private again at any time.
       </p>
       <p>
         When you paste a crawl's link into a messaging app or social network (for example WhatsApp, iMessage or
@@ -188,7 +220,8 @@ export function PrivacyPage() {
           .
         </li>
         <li>
-          <strong>Resend, Inc.</strong>: sends our emails, such as email confirmation and password reset links, so it receives your email
+          <strong>Resend, Inc.</strong>: sends our emails, such as email confirmation and password reset links, and security notices when your password
+          or email is changed or your account is deleted, so it receives your email
           address and the email's content.{" "}
           <a href="https://resend.com/legal/privacy-policy" target="_blank" rel="noreferrer">
             Privacy policy
@@ -217,8 +250,12 @@ export function PrivacyPage() {
       <h2>6. How long we keep it</h2>
       <ul>
         <li>
-          <strong>Account details</strong>: until you ask us to delete your account. We then delete them within 30
-          days, except anything we must keep by law.
+          <strong>Account details</strong>: until you delete your account (in My account) or ask us to. Deleting your
+          account removes your details, crawls and ratings from our database straight away. Our database provider keeps
+          automatic recovery backups for up to 30 days, after which the data is gone for good.
+        </li>
+        <li>
+          <strong>Ratings</strong>: until you remove them, the crawl is deleted, or you delete your account.
         </li>
         <li>
           <strong>Crawls</strong>: until they're deleted by you (or by anyone with the edit link). Crawls in a deleted
@@ -273,8 +310,9 @@ export function PrivacyPage() {
         <li>withdraw consent at any time, where we rely on consent (e.g. location or optional cookies)</li>
       </ul>
       <p>
-        To use any of these rights, including deleting your account, email <LegalEmail email={email} /> from the email
-        address on your account. We'll respond within one month. It's free, unless a request is clearly unfounded or
+        You can <strong>download your data</strong>, correct your name, username and email, and{" "}
+        <strong>delete your account</strong> yourself, in <strong>My account</strong>. To use any of these rights in
+        another way, email <LegalEmail email={email} /> from the email address on your account. We'll respond within one month. It's free, unless a request is clearly unfounded or
         excessive.
       </p>
       <p>

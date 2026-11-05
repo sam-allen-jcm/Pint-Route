@@ -24,6 +24,7 @@ import { SiteFooter } from "../components/SiteFooter";
 import { StopCard } from "../components/StopCard";
 import { useAuth } from "../auth";
 import { VerifyBanner } from "../components/VerifyBanner";
+import { PublicCrawlPanel, PublishCard } from "../components/PublicCrawl";
 import { formatDistance, formatDuration } from "../format";
 import { savedCrawls } from "../storage";
 import { useMediaQuery } from "../useMediaQuery";
@@ -329,6 +330,7 @@ export function CrawlPage() {
 
   const stopsPanel = (
     <section className="stack">
+      {crawl.isPublic && !crawl.isOwner && <PublicCrawlPanel crawl={crawl} onChange={setCrawl} />}
       {scheduleLine}
       {meetingSection}
       {stops.length === 0 ? (
@@ -378,6 +380,7 @@ export function CrawlPage() {
   const editPanel = (
     <div className="stack edit-panel">
       <ScheduleEditor crawl={crawl} editToken={editToken} onSaved={setCrawl} />
+      {crawl.isOwner && <PublishCard crawl={crawl} onChange={setCrawl} />}
       <EditStops
         stops={stops}
         places={places}
@@ -499,7 +502,7 @@ export function CrawlPage() {
         </div>
       )}
 
-      {(!canEdit || actionError || !shareable) && (
+      {((!canEdit && !crawl.isPublic) || actionError || !shareable) && (
         <div className={`crawl-notices ${wide ? "wide" : ""}`}>
           {canEdit &&
             !shareable &&
@@ -510,7 +513,7 @@ export function CrawlPage() {
                 🔒 Only people who can edit can see this crawl until its creator confirms their email address.
               </div>
             ))}
-          {!canEdit && (
+          {!canEdit && !crawl.isPublic && (
             <div className="banner">
               👀 You're viewing a shared crawl (read-only). <Link to="/">Plan your own on Pint Route</Link>
               {user === null && (

@@ -1,10 +1,23 @@
-import { MAX_STOPS, type Area, type MeetingPoint, type Crawl, type CrawlSummary, type CreatedCrawl, type Stop } from "../shared/types";
+import {
+  MAX_STOPS,
+  MIN_PUBLIC_STOPS,
+  type CommunityCrawl,
+  type CommunityPage,
+  type RatingSummary,
+  type Area,
+  type MeetingPoint,
+  type Crawl,
+  type CrawlSummary,
+  type CreatedCrawl,
+  type Stop,
+} from "../shared/types";
 import type { Env } from "./env";
 import { countryName, countryPlaceId, getArea, getMeetingPoint, getPlace, isPlaceId } from "./google";
 import { getUser } from "./auth";
 import { randomToken, sha256 } from "./crypto";
 import { containsLink } from "../shared/content";
 import { HttpError } from "./http";
+import { isAdmin } from "./stats";
 
 interface CrawlRow {
   id: number;
@@ -17,6 +30,9 @@ interface CrawlRow {
   meet_place_id: string | null;
   starts_at: string | null;
   minutes_per_stop: number | null;
+  is_public: number;
+  published_at: string | null;
+  copy_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -202,17 +218,54 @@ export async function createCrawl(
   throw new HttpError(500, "Could not allocate a share link, please try again");
 }
 
+async function ratingFor(
+  env: Env,
+  crawlId: number,
+  userId: number | null,
+): Promise<RatingSummary & { mine: number | null }> {
+  const row = await env.DB.prepare(
+    `SELECT COUNT(*) AS count, AVG(stars) AS average,
+            (SELECT stars FROM ratings WHERE crawl_id = ? AND user_id = ?) AS mine
+     FROM ratings WHERE crawl_id = ?`,
+  )
+    .bind(crawlId, userId ?? -1, crawlId)
+    .first<{ count: number; average: number | null; mine: number | null }>();
+  return {
+    count: row?.count ?? 0,
+    average: row?.average == null ? null : Math.round(row.average * 10) / 10,
+    mine: row?.mine ?? null,
+  };
+}
+
 export async function getCrawl(request: Request, env: Env, slug: string): Promise<Crawl> {
   const crawl = await loadCrawl(env, slug);
   const verified = await assertVisible(request, env, crawl);
+  const canEdit = await hasEditAccess(request, env, crawl);
+  const isPublic = crawl.is_public === 1;
+  let stops = await listStops(env, crawl.id);
+  // On a public crawl, notes and ticked-off dates stay private to people who can edit it.
+  if (isPublic && !canEdit) stops = stops.map((s) => ({ ...s, note: null, visitedOn: null }));
+  const author =
+    isPublic && crawl.owner_id !== null
+      ? ((
+          await env.DB.prepare("SELECT username FROM users WHERE id = ?")
+            .bind(crawl.owner_id)
+            .first<{ username: string | null }>()
+        )?.username ?? null)
+      : null;
+  const user = await getUser(request, env);
   return {
+    isPublic,
+    author,
+    rating: await ratingFor(env, crawl.id, user?.id ?? null),
+    copyCount: crawl.copy_count,
     ownerVerified: verified,
     slug: crawl.slug,
     name: crawl.name,
     createdAt: crawl.created_at,
     updatedAt: crawl.updated_at,
-    stops: await listStops(env, crawl.id),
-    canEdit: await hasEditAccess(request, env, crawl),
+    stops,
+    canEdit,
     isOwner: await isOwner(request, env, crawl),
     hasValidToken: await tokenMatches(request, crawl),
     countryCode: crawl.country_code,
@@ -248,8 +301,10 @@ async function loadArea(env: Env, placeId: string | null): Promise<Area | null> 
 /** The logged-in user's crawls, most recently changed first. */
 export async function listMyCrawls(env: Env, userId: number): Promise<CrawlSummary[]> {
   const { results } = await env.DB.prepare(
-    `SELECT c.slug, c.name, c.updated_at,
-            COUNT(s.id) AS stop_count, COUNT(s.visited_on) AS visited_count
+    `SELECT c.slug, c.name, c.updated_at, c.is_public,
+            COUNT(s.id) AS stop_count, COUNT(s.visited_on) AS visited_count,
+            (SELECT COUNT(*) FROM ratings r WHERE r.crawl_id = c.id) AS rating_count,
+            (SELECT AVG(stars) FROM ratings r WHERE r.crawl_id = c.id) AS rating_average
      FROM crawls c LEFT JOIN stops s ON s.crawl_id = c.id
      WHERE c.owner_id = ?
      GROUP BY c.id
@@ -257,8 +312,22 @@ export async function listMyCrawls(env: Env, userId: number): Promise<CrawlSumma
      LIMIT 200`,
   )
     .bind(userId)
-    .all<{ slug: string; name: string; updated_at: string; stop_count: number; visited_count: number }>();
+    .all<{
+      slug: string;
+      name: string;
+      updated_at: string;
+      is_public: number;
+      stop_count: number;
+      visited_count: number;
+      rating_count: number;
+      rating_average: number | null;
+    }>();
   return results.map((r) => ({
+    isPublic: r.is_public === 1,
+    rating: {
+      count: r.rating_count,
+      average: r.rating_average == null ? null : Math.round(r.rating_average * 10) / 10,
+    },
     slug: r.slug,
     name: r.name,
     stopCount: r.stop_count,
@@ -371,6 +440,7 @@ export async function updateCrawl(
 export async function deleteCrawl(request: Request, env: Env, slug: string) {
   const crawl = await requireEdit(request, env, slug);
   await env.DB.batch([
+    env.DB.prepare("DELETE FROM ratings WHERE crawl_id = ?").bind(crawl.id),
     env.DB.prepare("DELETE FROM stops WHERE crawl_id = ?").bind(crawl.id),
     env.DB.prepare("DELETE FROM crawls WHERE id = ?").bind(crawl.id),
   ]);
@@ -381,7 +451,9 @@ export async function addStop(request: Request, env: Env, slug: string, body: { 
   if (!isPlaceId(body.placeId)) throw new HttpError(400, "Invalid place id");
   const placeId = body.placeId;
 
-  const count = await env.DB.prepare("SELECT COUNT(*) AS n, COALESCE(MAX(position), -1) AS maxPos FROM stops WHERE crawl_id = ?")
+  const count = await env.DB.prepare(
+    "SELECT COUNT(*) AS n, COALESCE(MAX(position), -1) AS maxPos FROM stops WHERE crawl_id = ?",
+  )
     .bind(crawl.id)
     .first<{ n: number; maxPos: number }>();
   if ((count?.n ?? 0) >= MAX_STOPS) throw new HttpError(400, `A crawl can have at most ${MAX_STOPS} stops`);
@@ -465,4 +537,200 @@ export async function removeStop(request: Request, env: Env, slug: string, stopI
   const res = await env.DB.prepare("DELETE FROM stops WHERE id = ? AND crawl_id = ?").bind(stopId, crawl.id).run();
   if (!res.meta.changes) throw new HttpError(404, "Stop not found");
   await touch(env, crawl.id).run();
+}
+
+// ---------- Community: public crawls, copies and ratings ----------
+
+/**
+ * PUT /api/crawls/:slug/public { isPublic }. Only the owner (logged in, email
+ * confirmed) can publish; the owner or an admin can unpublish.
+ */
+export async function setPublic(request: Request, env: Env, slug: string, body: { isPublic?: unknown }) {
+  if (typeof body.isPublic !== "boolean") throw new HttpError(400, "isPublic must be true or false");
+  const crawl = await loadCrawl(env, slug);
+  const user = await getUser(request, env);
+  if (!user) throw new HttpError(401, "Log in to change this");
+  const owner = crawl.owner_id === user.id;
+  if (!owner && !(body.isPublic === false && isAdmin(user, env))) {
+    throw new HttpError(403, "Only the person who made this crawl can make it public");
+  }
+  if (body.isPublic) {
+    if (!user.emailVerified)
+      throw new HttpError(403, "Confirm your email address before making crawls public", "unverified");
+    const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM stops WHERE crawl_id = ?")
+      .bind(crawl.id)
+      .first<{ n: number }>();
+    if ((n?.n ?? 0) < MIN_PUBLIC_STOPS) {
+      throw new HttpError(400, `Add at least ${MIN_PUBLIC_STOPS} pubs before making this crawl public`);
+    }
+  }
+  await env.DB.prepare(
+    `UPDATE crawls SET is_public = ?, published_at = CASE WHEN ? THEN COALESCE(published_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ELSE NULL END
+     WHERE id = ?`,
+  )
+    .bind(body.isPublic ? 1 : 0, body.isPublic ? 1 : 0, crawl.id)
+    .run();
+}
+
+/**
+ * POST /api/crawls/:slug/copy: copies a public crawl's route (pubs, order, town,
+ * meeting point) into the logged-in user's account. Notes, ticks and times aren't copied.
+ */
+export async function copyCrawl(request: Request, env: Env, slug: string): Promise<CreatedCrawl> {
+  const user = await getUser(request, env);
+  if (!user) throw new HttpError(401, "Log in to copy this crawl");
+  const source = await loadCrawl(env, slug);
+  const own = source.owner_id === user.id;
+  if (!(source.is_public === 1 && (await ownerVerified(env, source))) && !own) {
+    throw new HttpError(403, "Only public crawls can be copied");
+  }
+  const stops = await listStops(env, source.id);
+  const editToken = randomToken();
+  const hash = await sha256(editToken);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const newSlug = randomSlug();
+    const created = await env.DB.prepare(
+      `INSERT INTO crawls (slug, name, edit_token_hash, owner_id, country_code, area_place_id, meet_place_id, minutes_per_stop)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+    )
+      .bind(
+        newSlug,
+        source.name,
+        hash,
+        user.id,
+        source.country_code,
+        source.area_place_id,
+        source.meet_place_id,
+        source.minutes_per_stop,
+      )
+      .first<{ id: number }>()
+      .catch((err) => {
+        if (String(err).includes("UNIQUE")) return null;
+        throw err;
+      });
+    if (!created) continue;
+    await env.DB.batch([
+      ...stops.map((s, i) =>
+        env.DB.prepare("INSERT INTO stops (crawl_id, place_id, position) VALUES (?, ?, ?)").bind(
+          created.id,
+          s.placeId,
+          i,
+        ),
+      ),
+      ...(own ? [] : [env.DB.prepare("UPDATE crawls SET copy_count = copy_count + 1 WHERE id = ?").bind(source.id)]),
+    ]);
+    return { slug: newSlug, editToken };
+  }
+  throw new HttpError(500, "Could not allocate a share link, please try again");
+}
+
+/** PUT /api/crawls/:slug/rating { stars: 1-5 | null }: logged in, email confirmed, not your own crawl. */
+export async function rateCrawl(
+  request: Request,
+  env: Env,
+  slug: string,
+  body: { stars?: unknown },
+): Promise<RatingSummary & { mine: number | null }> {
+  const user = await getUser(request, env);
+  if (!user) throw new HttpError(401, "Log in to rate this crawl");
+  if (!user.emailVerified) throw new HttpError(403, "Confirm your email address to rate crawls", "unverified");
+  const crawl = await loadCrawl(env, slug);
+  if (crawl.is_public !== 1) throw new HttpError(403, "Only public crawls can be rated");
+  if (crawl.owner_id === user.id) throw new HttpError(403, "You can't rate your own crawl");
+  if (body.stars === null) {
+    await env.DB.prepare("DELETE FROM ratings WHERE crawl_id = ? AND user_id = ?").bind(crawl.id, user.id).run();
+  } else {
+    const stars = Number(body.stars);
+    if (!Number.isInteger(stars) || stars < 1 || stars > 5) throw new HttpError(400, "Choose 1 to 5 stars");
+    await env.DB.prepare(
+      `INSERT INTO ratings (crawl_id, user_id, stars) VALUES (?, ?, ?)
+       ON CONFLICT (crawl_id, user_id) DO UPDATE SET stars = excluded.stars, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`,
+    )
+      .bind(crawl.id, user.id, stars)
+      .run();
+  }
+  return ratingFor(env, crawl.id, user.id);
+}
+
+const PAGE_SIZE = 20;
+
+/** GET /api/community?sort=top|new&country=GB&q=&page=0 */
+export async function listCommunity(env: Env, params: URLSearchParams): Promise<CommunityPage> {
+  const sort = params.get("sort") === "new" ? "new" : "top";
+  const country = (params.get("country") ?? "").toUpperCase();
+  const q = (params.get("q") ?? "").trim().slice(0, 60);
+  const page = Math.min(Math.max(Number(params.get("page")) || 0, 0), 50);
+  const limit = Math.min(Math.max(Number(params.get("limit")) || PAGE_SIZE, 1), PAGE_SIZE);
+
+  const where = [
+    "c.is_public = 1",
+    "u.email_verified_at IS NOT NULL",
+    `(SELECT COUNT(*) FROM stops s WHERE s.crawl_id = c.id) >= ${MIN_PUBLIC_STOPS}`,
+  ];
+  const binds: unknown[] = [];
+  if (/^[A-Z]{2}$/.test(country)) {
+    where.push("c.country_code = ?");
+    binds.push(country);
+  }
+  if (q) {
+    where.push("c.name LIKE ? ESCAPE '\\'");
+    binds.push(`%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`);
+  }
+  // "Top": average pulled towards 3 stars until a crawl has a few ratings.
+  const order =
+    sort === "new"
+      ? "c.published_at DESC"
+      : "(COALESCE(r.total, 0) + 6.0) / (COALESCE(r.count, 0) + 2) DESC, COALESCE(r.count, 0) DESC, c.published_at DESC";
+  const { results } = await env.DB.prepare(
+    `SELECT c.slug, c.name, c.country_code, c.area_place_id, c.copy_count, c.published_at, u.username,
+            (SELECT COUNT(*) FROM stops s WHERE s.crawl_id = c.id) AS stop_count,
+            COALESCE(r.count, 0) AS rating_count, r.average AS rating_average
+     FROM crawls c
+     JOIN users u ON u.id = c.owner_id
+     LEFT JOIN (SELECT crawl_id, COUNT(*) AS count, SUM(stars) AS total, AVG(stars) AS average FROM ratings GROUP BY crawl_id) r
+       ON r.crawl_id = c.id
+     WHERE ${where.join(" AND ")}
+     ORDER BY ${order}
+     LIMIT ? OFFSET ?`,
+  )
+    .bind(...binds, limit + 1, page * limit)
+    .all<{
+      slug: string;
+      name: string;
+      country_code: string | null;
+      area_place_id: string | null;
+      copy_count: number;
+      published_at: string;
+      username: string | null;
+      stop_count: number;
+      rating_count: number;
+      rating_average: number | null;
+    }>();
+
+  const rows = results.slice(0, limit);
+  // Town names come live from Google (cached), per Google's terms.
+  const areaIds = [...new Set(rows.map((r) => r.area_place_id).filter((id): id is string => Boolean(id)))];
+  const areas = new Map<string, string>();
+  await Promise.all(
+    areaIds.map(async (id) => {
+      const area = await loadArea(env, id);
+      // A country-only crawl's "area" is the country itself: no town to show.
+      if (area && !area.isCountry) areas.set(id, area.name);
+    }),
+  );
+  const crawls: CommunityCrawl[] = rows.map((r) => ({
+    slug: r.slug,
+    name: r.name,
+    author: r.username ?? "Pint Route user",
+    countryCode: r.country_code,
+    areaName: (r.area_place_id && areas.get(r.area_place_id)) || null,
+    stopCount: r.stop_count,
+    rating: {
+      count: r.rating_count,
+      average: r.rating_average == null ? null : Math.round(r.rating_average * 10) / 10,
+    },
+    copyCount: r.copy_count,
+    publishedAt: r.published_at,
+  }));
+  return { crawls, nextPage: results.length > limit ? page + 1 : null };
 }

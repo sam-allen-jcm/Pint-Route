@@ -7,6 +7,7 @@
 //   its SHA-256 is stored in D1, so a database leak doesn't leak live sessions.
 
 import { containsLink } from "../shared/content";
+import { generateUsername, usernameProblem } from "../shared/username";
 import { TERMS_VERSION } from "../shared/legal";
 import type { User } from "../shared/types";
 import { fromBase64Url, randomToken, sha256, timingSafeEqual, toBase64Url } from "./crypto";
@@ -14,27 +15,72 @@ import { passwordResetEmail, sendEmail, verifyEmailEmail } from "./email";
 import type { Env } from "./env";
 import { HttpError, json } from "./http";
 
-const COOKIE = "pr_session";
+export const COOKIE = "pr_session";
 const SESSION_DAYS = 30;
 const PBKDF2_ITERATIONS = 100_000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-interface UserRow {
+export type UserFields = {
   id: number;
   email: string;
   display_name: string;
+  username: string | null;
   email_verified_at: string | null;
+};
+interface UserRow extends UserFields {
   password_hash: string;
 }
 
-type UserFields = { id: number; email: string; display_name: string; email_verified_at: string | null };
+/** Columns for a UserFields row (prefix with "u." where needed). */
+export const USER_COLS = "id, email, display_name, username, email_verified_at";
 
-const toUser = (r: UserFields): User => ({
+export const toUser = (r: UserFields): User => ({
   id: r.id,
   email: r.email,
   name: r.display_name,
+  username: r.username ?? "",
   emailVerified: Boolean(r.email_verified_at),
 });
+
+// ---------- usernames ----------
+
+/** Checks a chosen username, or throws a 400/409 explaining why it can't be used. */
+export async function cleanUsername(env: Env, v: unknown, exceptUserId: number | null = null): Promise<string> {
+  const name = typeof v === "string" ? v.trim().replace(/^@/, "") : "";
+  const problem = usernameProblem(name);
+  if (problem) throw new HttpError(400, problem);
+  const taken = await env.DB.prepare("SELECT id FROM users WHERE username = ? COLLATE NOCASE AND id IS NOT ?")
+    .bind(name, exceptUserId)
+    .first();
+  if (taken) throw new HttpError(409, "That username is taken. Try another, or leave it blank for one of ours.");
+  return name;
+}
+
+/** A generated username nobody has yet. */
+async function freshUsername(env: Env): Promise<string> {
+  for (let i = 0; i < 8; i++) {
+    const name = generateUsername();
+    const taken = await env.DB.prepare("SELECT 1 FROM users WHERE username = ? COLLATE NOCASE").bind(name).first();
+    if (!taken) return name;
+  }
+  return `${generateUsername()}${Math.floor(Math.random() * 9000) + 1000}`;
+}
+
+/** Accounts from before usernames existed get one the first time they're seen. */
+async function ensureUsername(env: Env, row: UserFields): Promise<UserFields> {
+  if (row.username) return row;
+  for (let i = 0; i < 3; i++) {
+    const name = await freshUsername(env);
+    try {
+      await env.DB.prepare("UPDATE users SET username = ? WHERE id = ? AND username IS NULL").bind(name, row.id).run();
+      const fresh = await env.DB.prepare("SELECT username FROM users WHERE id = ?").bind(row.id).first<{ username: string }>();
+      return { ...row, username: fresh?.username ?? name };
+    } catch (err) {
+      if (!String(err).includes("UNIQUE")) throw err;
+    }
+  }
+  return row;
+}
 
 // ---------- passwords ----------
 
@@ -46,13 +92,13 @@ async function pbkdf2(password: string, salt: Uint8Array, iterations: number): P
   return new Uint8Array(bits);
 }
 
-async function hashPassword(password: string): Promise<string> {
+export async function hashPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const hash = await pbkdf2(password, salt, PBKDF2_ITERATIONS);
   return `pbkdf2-sha256$${PBKDF2_ITERATIONS}$${toBase64Url(salt)}$${toBase64Url(hash)}`;
 }
 
-async function verifyPassword(password: string, stored: string): Promise<boolean> {
+export async function verifyPassword(password: string, stored: string): Promise<boolean> {
   const [scheme, iter, salt, hash] = stored.split("$");
   if (scheme !== "pbkdf2-sha256" || !iter || !salt || !hash) return false;
   const actual = await pbkdf2(password, fromBase64Url(salt), Number(iter));
@@ -65,20 +111,20 @@ const DUMMY_HASH = "pbkdf2-sha256$100000$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAA
 
 // ---------- input validation ----------
 
-function cleanEmail(v: unknown): string {
+export function cleanEmail(v: unknown): string {
   const email = typeof v === "string" ? v.trim().toLowerCase() : "";
   if (!EMAIL_RE.test(email) || email.length > 254) throw new HttpError(400, "Enter a valid email address");
   return email;
 }
 
-function cleanPassword(v: unknown, forNewAccount: boolean): string {
+export function cleanPassword(v: unknown, forNewAccount: boolean): string {
   if (typeof v !== "string" || !v) throw new HttpError(400, "Enter your password");
   if (v.length > 200) throw new HttpError(400, "Password must be 200 characters or fewer");
   if (forNewAccount && v.length < 8) throw new HttpError(400, "Password must be at least 8 characters");
   return v;
 }
 
-function cleanDisplayName(v: unknown): string {
+export function cleanDisplayName(v: unknown): string {
   const name = typeof v === "string" ? v.trim().replace(/\s+/g, " ") : "";
   if (!name) throw new HttpError(400, "Enter your name");
   if (name.length > 40) throw new HttpError(400, "Name must be 40 characters or fewer");
@@ -88,7 +134,7 @@ function cleanDisplayName(v: unknown): string {
 
 // ---------- rate limiting ----------
 
-async function rateLimit(request: Request, env: Env, what: string, email: string) {
+export async function rateLimit(request: Request, env: Env, what: string, email: string) {
   const ip = request.headers.get("CF-Connecting-IP") ?? "local";
   // A missing binding (e.g. some local setups) just skips that check.
   const results = await Promise.all([
@@ -102,7 +148,7 @@ async function rateLimit(request: Request, env: Env, what: string, email: string
 
 // ---------- sessions ----------
 
-function readCookie(request: Request, name: string): string | null {
+export function readCookie(request: Request, name: string): string | null {
   const header = request.headers.get("Cookie") ?? "";
   for (const part of header.split(";")) {
     const [k, ...v] = part.trim().split("=");
@@ -111,7 +157,7 @@ function readCookie(request: Request, name: string): string | null {
   return null;
 }
 
-function sessionCookie(token: string, maxAgeSeconds: number): string {
+export function sessionCookie(token: string, maxAgeSeconds: number): string {
   return `${COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAgeSeconds}`;
 }
 
@@ -140,12 +186,12 @@ export function getUser(request: Request, env: Env): Promise<User | null> {
       const token = readCookie(request, COOKIE);
       if (!token) return null;
       const row = await env.DB.prepare(
-        `SELECT u.id, u.email, u.display_name, u.email_verified_at FROM sessions s JOIN users u ON u.id = s.user_id
+        `SELECT u.id, u.email, u.display_name, u.username, u.email_verified_at FROM sessions s JOIN users u ON u.id = s.user_id
          WHERE s.id = ? AND s.expires_at > ?`,
       )
         .bind(await sha256(token), new Date().toISOString())
         .first<UserFields>();
-      return row ? toUser(row) : null;
+      return row ? toUser(await ensureUsername(env, row)) : null;
     })();
     userCache.set(request, pending);
   }
@@ -169,6 +215,7 @@ export async function register(
   const email = cleanEmail(body.email);
   const password = cleanPassword(body.password, true);
   const name = cleanDisplayName(body.name);
+  const wanted = typeof body.username === "string" && body.username.trim() ? body.username : null;
   if (body.acceptTerms !== true) {
     throw new HttpError(400, "Please confirm you're of legal drinking age and agree to the Terms and Privacy Policy");
   }
@@ -176,12 +223,13 @@ export async function register(
 
   const existing = await env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(email).first();
   if (existing) throw new HttpError(409, "An account with this email already exists. Try logging in.");
+  const username = wanted ? await cleanUsername(env, wanted) : await freshUsername(env);
 
   const row = await env.DB.prepare(
-    `INSERT INTO users (email, display_name, password_hash, terms_version, terms_accepted_at)
-     VALUES (?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) RETURNING id, email, display_name, email_verified_at`,
+    `INSERT INTO users (email, display_name, username, password_hash, terms_version, terms_accepted_at)
+     VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) RETURNING ${USER_COLS}`,
   )
-    .bind(email, name, await hashPassword(password), TERMS_VERSION)
+    .bind(email, name, username, await hashPassword(password), TERMS_VERSION)
     .first<UserFields>();
   if (!row) throw new HttpError(500, "Could not create account");
 
@@ -194,13 +242,13 @@ export async function login(request: Request, env: Env, body: Record<string, unk
   const password = cleanPassword(body.password, false);
   await rateLimit(request, env, "login", email);
 
-  const row = await env.DB.prepare("SELECT id, email, display_name, email_verified_at, password_hash FROM users WHERE email = ?")
+  const row = await env.DB.prepare(`SELECT ${USER_COLS}, password_hash FROM users WHERE email = ?`)
     .bind(email)
     .first<UserRow>();
   const ok = await verifyPassword(password, row?.password_hash ?? DUMMY_HASH);
   if (!row || !ok) throw new HttpError(401, "Email or password is incorrect");
 
-  return json({ user: toUser(row) }, { headers: { "Set-Cookie": await startSession(env, row.id) } });
+  return json({ user: toUser(await ensureUsername(env, row)) }, { headers: { "Set-Cookie": await startSession(env, row.id) } });
 }
 
 export async function logout(request: Request, env: Env): Promise<Response> {
@@ -236,7 +284,7 @@ export async function forgotPassword(
   const origin = env.APP_URL?.replace(/\/+$/, "") || new URL(request.url).origin;
   ctx.waitUntil(
     (async () => {
-      const user = await env.DB.prepare("SELECT id, email, display_name FROM users WHERE email = ?")
+      const user = await env.DB.prepare(`SELECT ${USER_COLS} FROM users WHERE email = ?`)
         .bind(email)
         .first<UserFields>();
       if (!user) return;
@@ -295,11 +343,11 @@ export async function resetPassword(env: Env, body: Record<string, unknown>): Pr
     env.DB.prepare("DELETE FROM password_resets WHERE user_id = ?").bind(reset.user_id),
   ]);
 
-  const user = await env.DB.prepare("SELECT id, email, display_name, email_verified_at FROM users WHERE id = ?")
+  const user = await env.DB.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?`)
     .bind(reset.user_id)
     .first<UserFields>();
   if (!user) throw invalid;
-  return json({ user: toUser(user) }, { headers: { "Set-Cookie": await startSession(env, user.id) } });
+  return json({ user: toUser(await ensureUsername(env, user)) }, { headers: { "Set-Cookie": await startSession(env, user.id) } });
 }
 
 // ---------- email verification ----------
@@ -311,7 +359,7 @@ function appOrigin(env: Env, request: Request): string {
 }
 
 /** Emails a verification link (replacing any earlier one). */
-async function sendVerification(env: Env, request: Request, user: UserFields): Promise<void> {
+export async function sendVerification(env: Env, request: Request, user: UserFields): Promise<void> {
   const token = randomToken();
   const expires = new Date(Date.now() + VERIFY_DAYS * 86_400_000).toISOString();
   await env.DB.batch([
@@ -356,7 +404,7 @@ export async function resendVerification(request: Request, env: Env, ctx: Execut
   const user = await requireUser(request, env);
   if (user.emailVerified) return json({ ok: true, alreadyVerified: true });
   await rateLimit(request, env, "verify", user.email);
-  const row = await env.DB.prepare("SELECT id, email, display_name, email_verified_at FROM users WHERE id = ?")
+  const row = await env.DB.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?`)
     .bind(user.id)
     .first<UserFields>();
   if (row) ctx.waitUntil(sendVerification(env, request, row).catch((err) => console.error("verification email failed", err)));

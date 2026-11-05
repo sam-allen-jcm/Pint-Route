@@ -9,12 +9,14 @@ interface AuthState {
   /** True for the owner account(s) allowed to see /stats. */
   isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string, username?: string) => Promise<void>;
   /** Sets a new password from a reset link and logs in. */
   resetPassword: (token: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   /** Re-reads the logged-in user (e.g. after confirming the email address). */
   refresh: () => Promise<void>;
+  /** Clears local state after the account has been deleted. */
+  forget: () => void;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -56,8 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await refresh();
   }, [refresh]);
 
-  const register = useCallback(async (name: string, email: string, password: string) => {
-    const u = await api.register(name, email, password);
+  const register = useCallback(async (name: string, email: string, password: string, username = "") => {
+    const u = await api.register(name, email, password, username);
     await claimDeviceCrawls();
     setUser(u);
     await refresh();
@@ -69,6 +71,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(u);
     await refresh();
   }, [refresh]);
+
+  /** After the account is deleted server-side: forget this device's crawls too. */
+  const forget = useCallback(() => {
+    savedCrawls.list().forEach((c) => savedCrawls.remove(c.slug));
+    setUser(null);
+    setIsAdmin(false);
+  }, []);
 
   const logout = useCallback(async () => {
     // Forget this device's edit tokens for crawls that live in the account, so
@@ -85,8 +94,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, isAdmin, login, register, resetPassword, logout, refresh }),
-    [user, isAdmin, login, register, resetPassword, logout, refresh],
+    () => ({ user, isAdmin, login, register, resetPassword, logout, refresh, forget }),
+    [user, isAdmin, login, register, resetPassword, logout, refresh, forget],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

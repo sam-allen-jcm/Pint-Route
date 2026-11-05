@@ -88,9 +88,42 @@ export interface User {
   id: number;
   email: string;
   name: string;
+  /** Public name, shown on crawls the user makes public. */
+  username: string;
   /** False until the emailed verification link is used; shared links stay off until then. */
   emailVerified: boolean;
 }
+
+/** Star ratings on a public crawl. */
+export interface RatingSummary {
+  /** Average stars (1–5), or null with no ratings yet. */
+  average: number | null;
+  count: number;
+}
+
+/** A public crawl as listed in the Community area. */
+export interface CommunityCrawl {
+  slug: string;
+  name: string;
+  /** Creator's public username. */
+  author: string;
+  countryCode: string | null;
+  /** Town or city name (fetched live from Google), if one was chosen. */
+  areaName: string | null;
+  stopCount: number;
+  rating: RatingSummary;
+  copyCount: number;
+  publishedAt: string;
+}
+
+export interface CommunityPage {
+  crawls: CommunityCrawl[];
+  /** Pass back as ?page= for more. Null when there are no more. */
+  nextPage: number | null;
+}
+
+/** Minimum pubs before a crawl can be made public. */
+export const MIN_PUBLIC_STOPS = 2;
 
 /** A crawl in the logged-in user's account list. */
 export interface CrawlSummary {
@@ -99,6 +132,8 @@ export interface CrawlSummary {
   stopCount: number;
   visitedCount: number;
   updatedAt: string;
+  isPublic: boolean;
+  rating: RatingSummary;
 }
 
 export interface Crawl {
@@ -115,6 +150,13 @@ export interface Crawl {
   ownerVerified: boolean;
   /** True when the request's X-Edit-Token is this crawl's edit token. */
   hasValidToken: boolean;
+  /** Listed in the Community area. Viewers who can't edit don't see notes or ticked-off dates. */
+  isPublic: boolean;
+  /** Creator's public username, for public crawls only. */
+  author: string | null;
+  /** Ratings (public crawls). `mine` is the logged-in user's own stars, if they've rated it. */
+  rating: RatingSummary & { mine: number | null };
+  copyCount: number;
   /** ISO country code chosen when the crawl was created (null for older crawls). */
   countryCode: string | null;
   area: Area | null;
