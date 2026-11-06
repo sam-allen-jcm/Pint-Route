@@ -94,6 +94,7 @@ export function HomePage() {
           <span className="sign-est">Est. tonight</span>
           <h1>Pint Route</h1>
           <span className="sign-sub">Pub crawls, properly planned</span>
+          <span className="sign-hi">Hi Mr G 👋</span>
         </div>
       </header>
 

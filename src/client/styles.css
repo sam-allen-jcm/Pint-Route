@@ -1980,3 +1980,14 @@ input[type="time"]::-webkit-date-and-time-value {
   font-size: 0.7em;
   opacity: 0.6;
 }
+.sign-hi {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--amber);
+  color: var(--amber-ink);
+  font-weight: 700;
+  font-size: 0.85rem;
+  transform: rotate(-3deg);
+}
