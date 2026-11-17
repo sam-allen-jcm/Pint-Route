@@ -7,6 +7,7 @@ import type {
   CrawlRating,
   FsaAuthority,
   VenueDetails,
+  VenueMapResult,
   VenueSearchResult,
   CrawlSummary,
   CreatedCrawl,
@@ -128,6 +129,12 @@ export const api = {
     if (opts.kind) params.set("kind", opts.kind);
     if (opts.page) params.set("page", String(opts.page));
     return request<VenueSearchResult>(`/api/venues/area/${encodeURIComponent(area)}?${params}`);
+  },
+  /** Venues on the visible part of a map. Rejects with code "zoom_in" when the map is too zoomed out. */
+  venuesInBounds(b: { south: number; west: number; north: number; east: number }, kind = "") {
+    const params = new URLSearchParams({ b: [b.south, b.west, b.north, b.east].map((n) => n.toFixed(4)).join(",") });
+    if (kind) params.set("kind", kind);
+    return request<VenueMapResult>(`/api/venues/in?${params}`);
   },
   venueTowns() {
     return request<{ towns: { name: string; slug: string; count: number }[] }>("/api/venues/towns").then((r) => r.towns);

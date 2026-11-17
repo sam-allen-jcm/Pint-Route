@@ -12,6 +12,7 @@ import type {
   VenueDetails,
   VenueKind,
   VenueSearchResult,
+  VenueMapResult,
   VenueSummary,
 } from "../shared/types";
 import { cached, forget } from "./cache";
@@ -538,7 +539,8 @@ export async function areaVenues(env: Env, area: string, params: URLSearchParams
     env.DB.prepare(
       `SELECT COUNT(*) AS n,
               MAX(CASE WHEN town_slug = ? THEN town END) AS town,
-              MAX(CASE WHEN local_authority = ? COLLATE NOCASE THEN local_authority END) AS authority
+              MAX(CASE WHEN local_authority = ? COLLATE NOCASE THEN local_authority END) AS authority,
+              MIN(lat) AS south, MAX(lat) AS north, MIN(lng) AS west, MAX(lng) AS east
        FROM venues WHERE ${where.sql} AND status = 'active' AND ${kind.sql}`,
     ).bind(slugify(decoded), raw, ...binds, ...kind.binds),
     env.DB.prepare(
@@ -554,12 +556,47 @@ export async function areaVenues(env: Env, area: string, params: URLSearchParams
     (count.results[0] as { town?: string | null } | undefined)?.town ??
     (count.results[0] as { authority?: string | null } | undefined)?.authority ??
     (total ? raw.replace(/\b\w/g, (c) => c.toUpperCase()) : null);
+  const box = count.results[0] as {
+    south: number | null;
+    north: number | null;
+    west: number | null;
+    east: number | null;
+  };
   return {
     venues: rows.slice(0, AREA_PAGE_SIZE).map((r) => toSummary(r)),
     nextPage: rows.length > AREA_PAGE_SIZE ? page + 1 : null,
     areaName,
     total,
+    bounds:
+      box && box.south !== null && box.north !== null && box.west !== null && box.east !== null
+        ? { low: { lat: box.south, lng: box.west }, high: { lat: box.north, lng: box.east } }
+        : null,
   };
+}
+
+const MAP_LIMIT = 500;
+/** A map showing more than about this many degrees across is too zoomed out to list every pub. */
+const MAP_MAX_SPAN = 0.6;
+
+/** GET /api/venues/in?b=south,west,north,east&kind=: venues on the visible part of a map. */
+export async function venuesInBounds(env: Env, params: URLSearchParams): Promise<VenueMapResult> {
+  const b = (params.get("b") ?? "").split(",").map(Number);
+  if (b.length !== 4 || b.some((n) => !Number.isFinite(n))) throw new HttpError(400, "Invalid map area");
+  const [south, west, north, east] = b;
+  if (south > north || west > east || Math.abs(south) > 90 || Math.abs(west) > 180)
+    throw new HttpError(400, "Invalid map area");
+  if (north - south > MAP_MAX_SPAN || east - west > MAP_MAX_SPAN * 2) {
+    throw new HttpError(400, "Zoom in to see pubs", "zoom_in");
+  }
+  const kind = kindFilter(params.get("kind"));
+  const { results } = await env.DB.prepare(
+    `SELECT ${LIST_COLS} FROM venues
+     WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ? AND status = 'active' AND ${kind.sql}
+     LIMIT ?`,
+  )
+    .bind(south, north, west, east, ...kind.binds, MAP_LIMIT + 1)
+    .all<VenueRow>();
+  return { venues: results.slice(0, MAP_LIMIT).map((r) => toSummary(r)), truncated: results.length > MAP_LIMIT };
 }
 
 /** GET /api/venues/towns: every town with venues, for "Browse by town" (cached for 10 minutes). */

@@ -313,6 +313,10 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
   calls. **Area pages:** `/pubs/reading`, `/pubs/rg1`. With no search, `/pubs` shows **Browse by
   town**: every imported town A–Z with its venue count (`venues.town_slug`, cached 10 minutes and
   cleared after each import).
+- **Pub map** (`/pubs/map`, or `/pubs/map?area=reading` from an area page): pins for every venue
+  on screen, loaded from `/api/venues/in` as the map moves (max 500 per view; zoomed out too
+  far, it asks you to zoom in). Colour by kind, tap for a card with "View pub" and directions,
+  "Show my location", and the same type filters. Only the Maps JS load costs Google money.
 - **Pub pages** (`/v/<slug>`): our data plus the FSA hygiene rating, and on first view the venue
   is matched to Google (text search for name + postcode near its location, accepting only a
   similarly named place within 250 m). Only the Place ID is stored; hours, photo and status are
@@ -376,6 +380,7 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 | `GET /api/community?sort=top\|new&country=&q=&page=` | – | Public crawls |
 | `GET /api/venues?q=\|near=lat,lng&kind=&page=` | – | Search the pub directory (our data only) |
 | `GET /api/venues/towns` | – | Every town with venues and its count, for "Browse by town" |
+| `GET /api/venues/in?b=south,west,north,east&kind=` | – | Venues on the visible part of a map (max 500; 400 `zoom_in` if the area is too big) |
 | `GET /api/venues/area/:area?kind=&page=` | – | Every venue in a town (by `town_slug`), council area or postcode district |
 | `GET /api/venues/:slug` | – | A pub's page: our data, hygiene rating, live Google details once matched, public crawls including it |
 | `GET /api/admin/venues/authorities` | admin | FSA council areas with our import status |

@@ -120,6 +120,11 @@ export function VenueSearchPage() {
             <Link to="/pubs">Search somewhere else</Link>
           </p>
         )}
+        {area && result && result.total ? (
+          <Link className="btn btn-ghost btn-small map-view-btn" to={`/pubs/map?area=${encodeURIComponent(area)}`}>
+            🗺️ Map view
+          </Link>
+        ) : null}
         {!area && <p className="muted small">Search every pub, bar and taproom in the UK by name, town or postcode.</p>}
       </header>
 
@@ -141,6 +146,9 @@ export function VenueSearchPage() {
           <button className="btn btn-ghost btn-block near-btn" onClick={nearMe} disabled={locating}>
             {locating ? "Finding you…" : "📍 Pubs near me"}
           </button>
+          <Link className="btn btn-ghost btn-block map-view-btn" to="/pubs/map">
+            🗺️ Pub map
+          </Link>
         </>
       )}
 

@@ -110,9 +110,11 @@ export function PrivacyPage() {
               only to our server, to search our own list of venues, and isn't stored.
               <br />
               <strong>"Show my location"</strong>: to show you as a dot on the map, updating as you walk while the page
-              is open. Your location stays on your device and is never sent to us. When the map follows you, Google
-              loads map images for the area around you, as it does for any part of the map you view. Tap the button
-              again to stop.
+              is open. Your exact location stays on your device and is never sent to us. When the map follows you, Google
+              loads map images for the area around you, as it does for any part of the map you view. On the{" "}
+              <strong>pub map</strong>, the edges of the area on screen are sent to our server to load the pubs in it,
+              so when the map is centred on you, that area is roughly where you are. It's used only to answer that
+              request and isn't stored. Tap the button again to stop.
             </td>
             <td>Consent (your browser asks permission first; you can say no)</td>
           </tr>

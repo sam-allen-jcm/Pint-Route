@@ -2247,3 +2247,94 @@ input[type="time"]::-webkit-date-and-time-value {
 .town-list a:hover {
   border-color: var(--brass);
 }
+
+/* ---------- pub map ---------- */
+.venue-map-page {
+  max-width: 1100px;
+  padding-bottom: 12px;
+}
+.map-page-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.map-page-head h1 {
+  font-size: 1.6rem;
+  margin: 8px 0 0;
+}
+.venue-map-page .chip-row {
+  margin: 10px 0;
+}
+.pub-map {
+  /* Leaves room for the header, filters and the cookie-settings button. */
+  height: calc(100dvh - 230px);
+  min-height: 360px;
+}
+.vpin {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--amber);
+  border: 2px solid var(--wood);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+.vpin-bar {
+  background: #b5532a;
+}
+.vpin-taproom {
+  background: var(--sign-green-2);
+}
+.vpin-nightclub {
+  background: #6b4aa0;
+}
+.vpin-club {
+  background: #8a8a8a;
+}
+.vpin.on {
+  transform: scale(1.5);
+  border-color: #fff;
+}
+.map-card {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  z-index: 6;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 420px;
+}
+.map-card-name {
+  font-family: var(--serif);
+  font-size: 1.15rem;
+  padding-right: 28px;
+}
+.map-card-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  border: none;
+  background: none;
+  font-size: 1rem;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 6px;
+}
+.map-card .public-actions {
+  margin-top: 6px;
+}
+.map-card .btn {
+  text-decoration: none;
+}
+.map-view-btn {
+  margin-top: 8px;
+}

@@ -71,7 +71,7 @@ pages and say so in your reply:
 | Venue directory (business listings, not user data): name, address, town, postcode, location, FSA id and food hygiene rating, our guessed kind, Google Place ID (linked on first view) | D1 `venues` (+ `venues_fts` search index, `fsa_imports`), imported per council area by admins at `/admin/venues` (`src/worker/venues.ts`) | Refreshed on re-import; venues gone from the FSA register are marked closed. Source: Food Standards Agency, Open Government Licence v3.0, so keep the attribution on pub pages |
 | Guest edit tokens, last country | Browser localStorage `pint-route:crawls`, `pint-route:last-country` | Until cleared |
 | Location, "near me" | Sent to Worker and Google, not stored; rounded copy cached ≤5 min | Transient |
-| Location, "Show my location" (live dot on map) | Browser only (`watchPosition`); never sent to the Worker. Google sees map tile requests for the area shown | Until switched off / page closed |
+| Location, "Show my location" (live dot on map) | Browser only (`watchPosition`); never sent to the Worker. Google sees map tile requests for the area shown. On the pub map (`/pubs/map`), the visible map bounds go to `/api/venues/in` to load pubs (not stored) | Until switched off / page closed |
 | IP address, request logs | Cloudflare (Workers observability logs); rate-limiter keys (IP, email, user id) | Short-term |
 | Cookie consent | CookieYes cookie `cookieyes-consent` | 1 year |
 | Usage stats: anonymous daily counts per event (+ coarse detail such as a country code) | D1 `usage_daily` (written by `src/worker/usage.ts`) | Indefinite (not personal data) |

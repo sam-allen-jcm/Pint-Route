@@ -255,6 +255,15 @@ export interface VenueSearchResult {
   areaName?: string | null;
   /** For area pages: how many venues the area has in total. */
   total?: number;
+  /** For area pages: the box around the area's venues, to fit a map to. */
+  bounds?: Bounds | null;
+}
+
+/** Venues inside a map's visible area. */
+export interface VenueMapResult {
+  venues: VenueSummary[];
+  /** True when there were more than we send; zoom in to see them all. */
+  truncated: boolean;
 }
 
 /** A venue's profile page. */
