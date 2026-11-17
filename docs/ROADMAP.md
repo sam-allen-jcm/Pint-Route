@@ -28,9 +28,9 @@ with whom?* Answer that well on a phone in under 10 seconds and the rest follows
 | **2. For Businesses** | Claim a venue, verify the claimant, owner dashboard, edit profile, Business Terms | 3–4 weeks | 1 |
 | **3. Features and sport** | Structured features (pool, darts, Sky/TNT, garden, dogs…), crowd-confirmed; "showing the match" listings | 3–4 weeks | 1 (2 for owner edits) |
 | **4. Beer** | Breweries and beer catalogue, tap lists with freshness, snap-the-board photo import, crowd pint prices | 4–6 weeks | 2 |
-| **5. Social** | Check-ins, friends, venue reviews and photos (fake-review safeguards), group plans and RSVPs | 4–6 weeks | 1 |
+| **5. Ratings and social** | Structured ratings and the type-aware Pint Route Score (section 5), check-ins, friends, photos, group plans and RSVPs | 5–7 weeks | 1 (3 for venue types) |
 | **6. Money** | Venue Pro subscription, local sponsored placement, brewery tier, Stripe billing | 3–4 weeks | 2 (+ traffic) |
-| **7. Apps** | PWA, then App Store / Google Play (section 9) | see section 9 | ideally after 3 |
+| **7. Apps** | PWA, then App Store / Google Play (section 10) | see section 10 | ideally after 3 |
 
 **Decisions needed from the owner** (each is discussed in the section shown):
 
@@ -39,8 +39,8 @@ with whom?* Answer that well on a phone in under 10 seconds and the rest follows
 3. **How claimants are verified:** phone-call code to the venue's listed number, plus Google Business Profile sign-in, with manual review as a fallback? (section 2)
 4. **Prices:** crowd-reported "price of a pint" with dates, owners optional? (section 4)
 5. **Sport fixtures:** pay for a licensed fixtures feed, or let pubs type in what they're showing? (section 3)
-6. **Written reviews of pubs:** yes, from day one, or start with features, photos and "recommend" only? (section 5)
-7. **Business set-up:** stay as SA Consulting, or form a limited company before taking money from venues? (section 8)
+6. ~~Written reviews of pubs?~~ **Decided:** no free text; a structured, type-aware rating system instead (section 5).
+7. **Business set-up:** stay as SA Consulting, or form a limited company before taking money from venues? (section 9)
 
 ---
 
@@ -122,7 +122,7 @@ fallback. Rules:
 - **Disputes and changes of hands:** tenancies change often. A new claim on an
   already-claimed venue triggers a review; the old owner is notified; claims lapse if an
   owner stays inactive for 12 months.
-- **2-factor sign-in is required** for business accounts (section 7).
+- **2-factor sign-in is required** for business accounts (section 8).
 - **Audit log** of every profile change (who, what, when), so a bad actor can be rolled back.
 - A **"Claimed ✓"** badge only appears after verification.
 
@@ -210,7 +210,7 @@ Pubs won't keep a list up to date unless it takes seconds. Ideas, roughly in ord
 4. **Integrations later:** tap-list and stock systems some bars already use (e.g. Untappd for
    Business, BeerMenus-style tools) and EPOS systems. Partner talks only once we have traffic.
 5. **Brewery "where to find our beer"** pages: breweries report which venues stock them.
-   Breweries are a natural *paying* customer for this (section 6).
+   Breweries are a natural *paying* customer for this (section 7).
 
 ### Prices
 
@@ -226,7 +226,138 @@ Most pubs won't publish prices or keep them current. Recommended approach:
 
 ---
 
-## 5. Social layer (simple, not Untappd)
+## 5. Ratings and the Pint Route Score
+
+**Owner's decision:** no free-text reviews. Instead a **structured rating system**: quick to
+give, hard to game, nothing to moderate, and much more useful than an average of stars,
+because it rates a pub **against what kind of pub it is**. The aim: the best database of pubs,
+taprooms and breweries in the UK.
+
+### The core idea: describe first, then rate
+
+A single star average misleads. A great local boozer and a great craft bar are good at
+different things, and someone after 20 craft keg lines doesn't care that the Red Lion has
+"only" 4 well-kept cask ales. So every rating has two halves:
+
+**1. Describe it (facts, not opinions).** These build the venue's **character profile**:
+- **What kind of place is it?** Pick up to 2 from a fixed list: *Local boozer · Traditional /
+  real ale pub · Craft beer bar · Brewery taproom · Sports pub · Gastropub · Bar / cocktail
+  bar · Student pub · Music / late venue · Hotel or chain pub*. Votes from many people (plus the
+  owner's own pick and data signals such as tap-list make-up, sports channels and food
+  service) settle on the venue's **type**, e.g. "Local boozer (82% agree)".
+- **Price level:** £ / ££ / £££, plus optionally "what did you pay for a pint of ___?". This is
+  a fact, not a score: cheap isn't "better" for everyone.
+- **Vibe chips:** quiet / lively / loud, music, busy at weekends, family-friendly, dogs
+  about, standing room only…
+- **Did you eat? Watch sport? Use the garden?** These unlock the optional factors below.
+
+**2. Rate it (1–5 on each factor that applies):**
+
+| Factor | What it means | Shown when |
+| --- | --- | --- |
+| **Beer quality** | Condition, temperature, clean glass, well-kept cask | Always |
+| **Beer range** | Range *for this kind of place* ("a good range for a local" is judged differently from a craft bar) | Always |
+| **Value for money** | Fair for what you get. This is different from price level: a £7 pint can be good value in a top craft bar | Always |
+| **Hospitality** | Friendly, welcoming to everyone, quick service, staff who know their beer | Always |
+| **Atmosphere** | Did it feel like a good pub to be in? | Always |
+| **Facilities** | Seating, toilets, cleanliness, accessibility, garden | Always |
+| **Food** | Quality and value | Only if they ate |
+| **Sport viewing** | Screens, sound, sightlines, room to watch | Only if they watched |
+
+**Quick tags (fixed list, no free text):** "great cask", "interesting guest beers", "friendly
+staff", "knowledgeable staff", "clean toilets", "good for groups", "dog bowls", plus the
+negatives "warm beer", "slow service", "dirty toilets", "felt unwelcoming". These are shown as
+counts ("14 people said: friendly staff"). They're specific and useful, with nothing to
+moderate and little defamation risk.
+
+**Time to complete: about 30 seconds.** Prompted at the natural moments: after ticking a pub
+off on a crawl, after a check-in, or the next morning ("How was The Bell last night?"). One
+rating per person per venue, updatable on later visits.
+
+### Calculating the scores
+
+- **Factor scores** use a *Bayesian average*: each venue starts at the average for its *type*
+  and moves towards its own ratings as they come in. So 2 five-star ratings don't beat 200
+  ratings averaging 4.6.
+- **Recency:** older ratings count less (e.g. half weight after 12 months), because pubs change
+  hands and landlords. A venue's score can recover after new management (the owner can flag "under new
+  management", which speeds up the decay).
+- **Trust weighting:** a **verified visit** (check-in confirmed by the phone's location at the
+  time, or ticked off on a crawl that day) counts fully; an unverified rating counts half;
+  brand-new accounts and accounts with suspicious patterns count less.
+- **The Pint Route Score (0–100)** combines the factor scores **with weights that depend on the
+  venue's type**, so each place is judged on what it's trying to be. Example starting weights
+  (to be tuned against real data):
+
+  | Factor | Local boozer | Craft bar / taproom | Real ale pub | Sports pub | Gastropub |
+  | --- | --- | --- | --- | --- | --- |
+  | Beer quality | 20% | 25% | 30% | 15% | 15% |
+  | Beer range | 5% | 25% | 20% | 5% | 10% |
+  | Value | 20% | 10% | 15% | 15% | 10% |
+  | Hospitality | 25% | 15% | 15% | 15% | 20% |
+  | Atmosphere | 20% | 15% | 15% | 20% | 15% |
+  | Facilities | 10% | 10% | 5% | 10% | 10% |
+  | Food / Sport | – | – | – | Sport 20% | Food 20% |
+
+- **Confidence:** no headline score until a venue has at least ~5 ratings (it shows "Not enough
+  ratings yet" and the character profile instead). Scores show their basis: "87 · from 64
+  ratings".
+- **"Best in town" lists** use the type-aware score: Top locals in Reading, Top craft bars in
+  Leeds, Best for sport in Manchester. That's far more useful than a single league table.
+
+### Personal match: "92% your kind of pub"
+
+Users can (optionally) set their tastes: *what I like* (craft, cask, quiet locals, sport,
+food…) and *what matters* (range, value, atmosphere…). Each venue then shows a **match %**
+for them, combining the type-aware score with their preferences and the features they need
+("must show Sky", "dog friendly"). Search can sort by "Best match". Preferences are stored
+against the account, and editable and deletable in My account.
+
+### Keeping it honest (and legal)
+
+Star ratings with no text are still **consumer reviews** under the **DMCC Act 2024**, so the
+fake-review duties apply. Safeguards, which also keep the data good:
+- Email-verified accounts only; one rating per venue; rate limits; ratings editable but each
+  edit re-dated.
+- **Business accounts can't rate their own venue**, and their ratings of venues within a few
+  miles of their own count for nothing (published policy, so competitors can't sink each
+  other).
+- **Anomaly detection:** bursts of ratings, clusters of new accounts, the same network or
+  device, people who only ever give 1s or 5s. Suspicious ratings are held back from scores
+  pending review. Owners can **flag ratings** they think are fake.
+- **No incentives tied to sentiment:** badges for *rating* pubs are fine, rewards for
+  *positive* ratings are not. Venues can put "Rate us on Pint Route" QR codes up, but can't
+  invite only happy customers. **Paying for Pro or a sponsored slot never affects scores**,
+  and we say so publicly.
+- A public **"How our scores work"** page (method, weights, safeguards). This is required
+  transparency, and builds trust.
+- Ratings are **personal data** linked to the account. Publicly they appear only as
+  aggregates (and, if a user chooses, on their own public profile).
+
+### Making it the best pub database in the UK
+
+- **Coverage target per town:** track "% of venues with 5+ ratings" and point users at gaps:
+  "3 pubs on your crawl have no ratings yet".
+- **The crawl is the engine:** every crawl tick-off is a rating prompt, so each crawl can
+  produce 4–8 ratings without asking much.
+- **Local scouts:** trusted regulars (high verified-visit counts) get a badge, and their
+  "still true?" answers and type votes carry more weight.
+- **Annual "Pint Route Awards"** by town and type (Best local in Reading 2027), from the
+  scores. Venues love a window sticker, the press love a list, and both bring traffic.
+- **Breweries:** taprooms are rated as venues. Beers themselves get a lighter rating later
+  (thumbs up/down plus "tasted at" which venue), feeding "where's it good on tap?"
+
+### Data model (sketch)
+
+`venue_ratings` (venue, user, visited_on, verified_method, weight, created/updated, held_for_review),
+`venue_rating_scores` (rating, factor, 1–5), `venue_rating_tags` (rating, tag),
+`venue_type_votes` (rating, type), `venue_scores` (venue, factor, score, count, confidence,
+computed_at; recomputed on write plus nightly for decay), `user_preferences` (user, likes,
+weights, must-haves). Crawl ratings (the 1–5 stars on public crawls) stay separate.
+
+---
+
+## 6. Social layer (simple, not Untappd)
 
 Keep it light and centred on *going out together*:
 - **Check in** at a venue ("I'm at The Bell"). Visible to friends only by default, with an
@@ -234,32 +365,29 @@ Keep it light and centred on *going out together*:
 - **Friends / follow:** see where friends have been and their public crawls. Location sharing
   is always **opt-in, time-limited and off by default** (location is sensitive data).
 - **Group plans:** "Friday drinks": invite friends, RSVP, vote between 3 pubs, then it becomes
-  a crawl. This merges with the Party Pack RSVPs (section 6b).
-- **Venue reviews and photos.** If we do written reviews (decision 6), the **DMCC Act 2024**
-  (in force since April 2025) bans fake reviews and requires **reasonable steps to prevent and
-  remove** them. Safeguards: verified accounts only, one review per venue, "visited" only after
-  a check-in, rate limits, a report button, an owner right of reply, no incentivised reviews
-  unless clearly labelled, and a published review policy. Photos need moderation (automated
-  first pass plus a report button) and **location data stripped** from uploads.
+  a crawl. This merges with the Party Pack RSVPs (section 7b).
+- **Ratings** are covered in section 5. **Photos** (by visitors and owners) need moderation
+  (an automated first pass plus a report button), **location data stripped** from uploads, and
+  an Online Safety Act risk assessment before launch.
 - **Badges, done responsibly:** "visited 10 pubs in Leeds", "5 breweries' taprooms", "a pub
   showing every Premier League ground". **Never** rewards based on how much someone drinks
   (CAP Code / Portman Group spirit).
 
 ---
 
-## 6. Monetisation
+## 7. Monetisation
 
-### 6a. Venue and brewery side (new: the main revenue engine)
+### 7a. Venue and brewery side (new: the main revenue engine)
 
 **Principle:** claiming and basic profiles are **free forever**. Supply first; charge for
 reach and tools.
 
 | Product | For | What they get | Price idea |
 | --- | --- | --- | --- |
-| **Venue Pro** | Pubs, bars, taprooms | Featured photos, events and sport listings with "promoted" styling, tap-list tools (board scan), offers, analytics (views, crawl adds, direction taps by day), respond to reviews | £15–£30/month per venue; discounts for groups |
+| **Venue Pro** | Pubs, bars, taprooms | Featured photos, events and sport listings with "promoted" styling, tap-list tools (board scan), offers, analytics (views, crawl adds, direction taps by day, full rating breakdown and trends by factor). Never any influence over scores | £15–£30/month per venue; discounts for groups |
 | **Local sponsored placement** | Venues | A clearly labelled **Sponsored** slot at the top of an area's results, near-me results and fixture listings for **one postcode district** (e.g. RG1), at most 1–2 per district, and only when the venue matches the user's filters | Fixed monthly price per district (e.g. £20–£80 by demand) or a monthly bid; start with fixed |
 | **Brewery tier** | Breweries | Beer catalogue tools, "where to find our beer" stock locator, taproom profile, events, data on where their beers are checked in | £20–£50/month |
-| **Event / crawl partnerships** | Breweries, BIDs, tourism boards, festivals | Branded official trails (section 6b, option 3) | Per-campaign fee |
+| **Event / crawl partnerships** | Breweries, BIDs, tourism boards, festivals | Branded official trails (section 7b, option 3) | Per-campaign fee |
 
 **Targeting by location without tracking people:** show sponsored venues for the **area being
 viewed or searched** (contextual), or the user's location only when they've tapped "near
@@ -277,7 +405,7 @@ alcohol discounts. **Solicitor review before launch.**
 upgrade/downgrade/cancel, B2B **Business Terms** with fair cancellation terms. Card data stays
 with Stripe.
 
-### 6b. Crawl-side ideas (from earlier planning)
+### 7b. Crawl-side ideas (from earlier planning)
 
 #### Principles
 
@@ -356,7 +484,7 @@ registration once over the threshold. Get a solicitor to review.
 
 ---
 
-## 7. Security, abuse and scraping
+## 8. Security, abuse and scraping
 
 ### What's already in place
 
@@ -425,7 +553,7 @@ launching payments.
 
 ---
 
-## 8. Legal, compliance and running a business
+## 9. Legal, compliance and running a business
 
 As each phase ships, the `CLAUDE.md` legal-pages rule applies. On top of that:
 
@@ -433,10 +561,10 @@ As each phase ships, the `CLAUDE.md` legal-pages rule applies. On top of that:
   venue content, the licence to display their content and photos, sport subscription
   responsibility, subscription and cancellation terms, liability caps. **Solicitor review.**
 - **Privacy:** new data for business users (names, roles, phone and email, verification
-  records), check-ins and friends (social data), reviews and photos, crowd reports, and new
+  records), check-ins and friends (social data), ratings and photos, crowd reports, and new
   processors (phone verification, AI board reading, Stripe, image moderation, possibly
   Turnstile). Check-in locations and friend activity must be private by default.
-- **Reviews:** DMCC Act 2024 fake-review duties (section 5), plus a published review policy.
+- **Ratings:** DMCC Act 2024 fake-review duties apply to star ratings too (section 5), plus a published "How our scores work" page.
 - **Advertising and promotions:** CAP Code section 18 (alcohol), always label "Sponsored",
   Licensing Act mandatory conditions, Scotland and Wales rules. Never target or appeal to
   under-18s.
@@ -456,7 +584,7 @@ As each phase ships, the `CLAUDE.md` legal-pages rule applies. On top of that:
 
 ---
 
-## 9. Phone apps (iOS and Android)
+## 10. Phone apps (iOS and Android)
 
 _Planned for after the venue platform is working (phase 7)._
 
@@ -537,7 +665,7 @@ store-specific terms (Apple's standard EULA, or our Terms adapted).
 
 ---
 
-## 10. Backlog (smaller items)
+## 11. Backlog (smaller items)
 
 - [x] **Self-serve account deletion and data export** (done: My account)
 - [x] **Change email and password** while logged in (done: My account)
