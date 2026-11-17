@@ -23,7 +23,7 @@ with whom?* Answer that well on a phone in under 10 seconds and the rest follows
 
 | Phase | What | Rough size | Depends on |
 | --- | --- | --- | --- |
-| **0. Foundations** | Security hardening, automated tests and CI, admin roles, our own `venues` table seeded from open data | 2–3 weeks | – |
+| **0. Foundations** | Security hardening, automated tests and CI, admin roles, our own `venues` table seeded from open data, start counting anonymous daily visits per venue | 2–3 weeks | – |
 | **1. Venue directory** | Search pubs/breweries/taprooms, venue profile pages, "all pubs in an area" pages, filters | 3–4 weeks | 0 |
 | **2. For Businesses** | Claim a venue, verify the claimant, owner dashboard, edit profile, Business Terms | 3–4 weeks | 1 |
 | **3. Features and sport** | Structured features (pool, darts, Sky/TNT, garden, dogs…), crowd-confirmed; "showing the match" listings | 3–4 weeks | 1 (2 for owner edits) |
@@ -46,6 +46,7 @@ with whom?* Answer that well on a phone in under 10 seconds and the rest follows
 8. **Friends model:** mutual friends (request and accept, recommended) or one-way following like Instagram? (section 6)
 9. **Direct messages:** leave them out and link to WhatsApp instead (recommended), or build chat? (section 6)
 10. **Tenanted and leased pubs in big estates:** split control between the pub company and the tenant (recommended), or give whoever signs up first full control? (section 2b)
+11. **Visit tracking:** start counting anonymous tick-offs per venue now, and add the opt-in location check with crews (recommended)? (section 6, "Verified visits")
 
 ---
 
@@ -193,7 +194,7 @@ controls the listing must reflect that:
 - **Beer range and "where to find our beer":** breweries push their core range to their own
   estate, and record **free trade** accounts (pubs they supply but don't own), which feeds
   the beer pages in section 4.
-- **Estate dashboard:** views, crawl adds, direction taps and rating trends per venue, region
+- **Estate dashboard:** views, crawl adds, direction taps, verified and planned visits (section 6) and rating trends per venue, region
   and brand; benchmarks against similar venues (anonymised); alerts such as "Your Leeds site's
   hospitality score dropped this month" or "3 sites have stale tap lists". Exports to CSV.
 - **API and integrations (later):** a rate-limited partner API with keys per organisation for
@@ -512,6 +513,60 @@ social feature should lead to people meeting in a pub, and produce better data a
   and weighted above ratings from people who only browsed it in the Community. That extends
   today's crawl rating, where only public crawls can be rated.
 
+### Verified visits and venue footfall
+
+Every tick-off on a crawl (and every check-in) is a **visit**. Counted up, visits tell a pub how
+many Pint Route users came through the door and when. With an optional location check, we can
+say they *really* went.
+
+**How a visit is recorded**
+- **Tick-off or check-in:** one visit per person, per venue, per day. In a crew (above), each
+  member's tick-off counts for them. On a solo-device crawl, the tick-off counts once, with an
+  optional "how many of you?" (1–20) for the group size, labelled as an estimate.
+- **Location confirmation (opt-in):** when ticking off, the phone's location is checked
+  **once**. If it's within about 150 m of the venue (allowing for GPS accuracy), the visit is
+  **verified ✓**. We store **only "verified: yes/no"**, never the coordinates. The venue's own
+  location comes from our venue table (section 1). A setting in My account, "Confirm visits
+  with my location", is **off by default** and turned on with a clear explanation; the browser
+  asks permission too.
+- **Sanity checks:** impossible journeys (two venues 30 miles apart 5 minutes apart), bursts
+  of tick-offs, and repeated visits are capped or marked unverified. GPS can be faked, so a
+  verified visit is a strong signal, not proof.
+
+**What pubs see (venue dashboard, section 2; estate dashboard, section 2b)**
+- **Visits per day and week**, verified vs unverified, from crawls vs check-ins; peak days;
+  repeat visitors (as a count); and how they found the pub (crawl, search, feed, sponsored slot).
+- **Planned visits:** "23 people have your pub on a crawl this Saturday" (from scheduled crawls
+  that include it). This is useful for staffing and stock, and a strong reason to claim a
+  profile.
+- **Campaign results:** "your sponsored slot in RG1 led to 34 verified visits this month". This
+  is proof that paid placement works, which is what makes advertising sell (section 7a).
+- **Only aggregates, with privacy safeguards:** counts below **5 are shown as "fewer than 5"**,
+  small numbers are rounded, there's no time-of-day breakdown for small counts, and **never
+  names, usernames or individual visits**. A pub must not be able to work out that "Sam was
+  here on Tuesday at 9pm".
+
+**What users get:** verified visits power badges, give their ratings more weight (section 5),
+fill their own "pubs I've been to" history (private by default), and later unlock venue offers
+("show this at the bar on a verified visit").
+
+**Start collecting early (cheap):** from the current app we could already keep an anonymous
+daily count of tick-offs per Place ID (`venue_visits_daily`: venue, day, count, verified
+count, with no user IDs). That builds history before venues arrive. Showing it to businesses,
+or adding the location check, is a **new purpose**, so the Privacy Policy must be updated in
+the same change.
+
+**Legal:** location is sensitive. Do a short **Data Protection Impact Assessment** before
+launch (location plus data shared with businesses). The location check needs clear information
+and browser permission (PECR/UK GDPR). Business reports must stay properly anonymised
+(minimum counts), and the Privacy Policy and Business Terms must describe exactly what pubs
+see. Business Terms must forbid trying to re-identify visitors.
+
+**Data model (sketch):** `visits` (user or null, venue, day, source: crawl/check-in, crawl id,
+verified, group_size, created), kept per user for their history and deleted with the account;
+`venue_visits_daily` (venue, day, visits, verified, planned), aggregated nightly and the only
+thing business dashboards read.
+
 ### Local feed ("What's on near you")
 
 A home-screen feed for the user's area (the town they choose, or near me when they've tapped
@@ -582,7 +637,7 @@ reach and tools.
 
 | Product | For | What they get | Price idea |
 | --- | --- | --- | --- |
-| **Venue Pro** | Pubs, bars, taprooms | Featured photos, events and sport listings with "promoted" styling, tap-list tools (board scan), offers, analytics (views, crawl adds, direction taps by day, full rating breakdown and trends by factor). Never any influence over scores | £15–£30/month per venue; discounts for groups |
+| **Venue Pro** | Pubs, bars, taprooms | Featured photos, events and sport listings with "promoted" styling, tap-list tools (board scan), offers, analytics (views, crawl adds, direction taps, **verified visits and planned visits** by day, full rating breakdown and trends by factor). Never any influence over scores | £15–£30/month per venue; discounts for groups |
 | **Local sponsored placement** | Venues | A clearly labelled **Sponsored** slot at the top of an area's results, near-me results and fixture listings for **one postcode district** (e.g. RG1), at most 1–2 per district, and only when the venue matches the user's filters | Fixed monthly price per district (e.g. £20–£80 by demand) or a monthly bid; start with fixed |
 | **Brewery tier** | Breweries | Beer catalogue tools, "where to find our beer" stock locator, taproom profile, events, data on where their beers are checked in | £20–£50/month |
 | **Event / crawl partnerships** | Breweries, BIDs, tourism boards, festivals | Branded official trails (section 7b, option 3) | Per-campaign fee |
