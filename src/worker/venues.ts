@@ -14,7 +14,7 @@ import type {
   VenueSearchResult,
   VenueSummary,
 } from "../shared/types";
-import { cached } from "./cache";
+import { cached, forget } from "./cache";
 import type { Env } from "./env";
 import { getPlace, google } from "./google";
 import { HttpError } from "./http";
@@ -35,6 +35,7 @@ interface VenueRow {
   kind: VenueKind;
   address: string;
   town: string | null;
+  town_slug: string | null;
   postcode: string | null;
   outcode: string | null;
   local_authority: string | null;
@@ -349,11 +350,11 @@ export async function importAuthority(
   });
 
   const upsert = env.DB.prepare(
-    `INSERT INTO venues (slug, name, kind, address, town, postcode, outcode, local_authority, lat, lng, fsa_id,
+    `INSERT INTO venues (slug, name, kind, address, town, town_slug, postcode, outcode, local_authority, lat, lng, fsa_id,
                          fsa_authority_id, hygiene_rating, hygiene_rating_date, source, seen_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'fsa', ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'fsa', ?)
      ON CONFLICT (fsa_id) DO UPDATE SET
-       name = excluded.name, kind = excluded.kind, address = excluded.address, town = excluded.town,
+       name = excluded.name, kind = excluded.kind, address = excluded.address, town = excluded.town, town_slug = excluded.town_slug,
        postcode = excluded.postcode, outcode = excluded.outcode, local_authority = excluded.local_authority,
        lat = excluded.lat, lng = excluded.lng, fsa_authority_id = excluded.fsa_authority_id,
        hygiene_rating = excluded.hygiene_rating, hygiene_rating_date = excluded.hygiene_rating_date,
@@ -368,6 +369,7 @@ export async function importAuthority(
       r.kind,
       r.address,
       r.town,
+      r.town ? slugify(r.town) || null : null,
       r.postcode,
       r.outcode,
       r.authority,
@@ -395,6 +397,9 @@ export async function importAuthority(
   )
     .bind(authorityId, authorityName, total, started)
     .run();
+
+  // New towns should show in "Browse by town" straight away.
+  await forget("venues:towns");
 
   return {
     name: authorityName,
@@ -518,20 +523,24 @@ export async function searchVenues(env: Env, params: URLSearchParams): Promise<V
 
 /** GET /api/venues/area/:area: everything in a town, council area or postcode district. */
 export async function areaVenues(env: Env, area: string, params: URLSearchParams): Promise<VenueSearchResult> {
-  const raw = decodeURIComponent(area).replace(/-/g, " ").trim().slice(0, 60);
+  const decoded = decodeURIComponent(area).trim().slice(0, 60);
+  const raw = decoded.replace(/-/g, " ");
   if (!raw) throw new HttpError(404, "Area not found");
   const kind = kindFilter(params.get("kind"));
   const page = Math.min(Math.max(Number(params.get("page")) || 0, 0), 50);
   const upper = raw.toUpperCase();
   const where = OUTCODE_RE.test(upper.replace(/\s/g, ""))
     ? { sql: "outcode = ?", bind: upper.replace(/\s/g, ""), name: upper.replace(/\s/g, "") }
-    : { sql: "(town = ? COLLATE NOCASE OR local_authority = ? COLLATE NOCASE)", bind: raw, name: null };
-  const binds = where.sql.includes("local_authority") ? [where.bind, where.bind] : [where.bind];
+    : { sql: "(town_slug = ? OR local_authority = ? COLLATE NOCASE)", bind: slugify(decoded), name: null };
+  const binds = where.sql.includes("local_authority") ? [where.bind, raw] : [where.bind];
 
   const [count, list] = await env.DB.batch([
     env.DB.prepare(
-      `SELECT COUNT(*) AS n, MIN(town) AS town FROM venues WHERE ${where.sql} AND status = 'active' AND ${kind.sql}`,
-    ).bind(...binds, ...kind.binds),
+      `SELECT COUNT(*) AS n,
+              MAX(CASE WHEN town_slug = ? THEN town END) AS town,
+              MAX(CASE WHEN local_authority = ? COLLATE NOCASE THEN local_authority END) AS authority
+       FROM venues WHERE ${where.sql} AND status = 'active' AND ${kind.sql}`,
+    ).bind(slugify(decoded), raw, ...binds, ...kind.binds),
     env.DB.prepare(
       `SELECT ${LIST_COLS} FROM venues WHERE ${where.sql} AND status = 'active' AND ${kind.sql}
        ORDER BY name LIMIT ? OFFSET ?`,
@@ -542,7 +551,8 @@ export async function areaVenues(env: Env, area: string, params: URLSearchParams
   // Show the area's name as the data spells it ("Reading", not "reading").
   const areaName =
     where.name ??
-    rows.find((r) => r.town?.toLowerCase() === raw.toLowerCase())?.town ??
+    (count.results[0] as { town?: string | null } | undefined)?.town ??
+    (count.results[0] as { authority?: string | null } | undefined)?.authority ??
     (total ? raw.replace(/\b\w/g, (c) => c.toUpperCase()) : null);
   return {
     venues: rows.slice(0, AREA_PAGE_SIZE).map((r) => toSummary(r)),
@@ -550,6 +560,18 @@ export async function areaVenues(env: Env, area: string, params: URLSearchParams
     areaName,
     total,
   };
+}
+
+/** GET /api/venues/towns: every town with venues, for "Browse by town" (cached for 10 minutes). */
+export function listTowns(env: Env): Promise<{ name: string; slug: string; count: number }[]> {
+  return cached("venues:towns", 600, async () => {
+    const { results } = await env.DB.prepare(
+      `SELECT MIN(town) AS name, town_slug AS slug, COUNT(*) AS count FROM venues
+       WHERE status = 'active' AND kind != 'club' AND town_slug IS NOT NULL AND town_slug != ''
+       GROUP BY town_slug ORDER BY town_slug`,
+    ).all<{ name: string; slug: string; count: number }>();
+    return results;
+  });
 }
 
 // ---------- a venue's page ----------
@@ -665,6 +687,7 @@ export async function getVenue(env: Env, slug: string): Promise<VenueDetails> {
     ...toSummary(v),
     address: v.address,
     outcode: v.outcode,
+    townSlug: v.town_slug,
     localAuthority: v.local_authority,
     hygiene:
       v.fsa_id && v.hygiene_rating

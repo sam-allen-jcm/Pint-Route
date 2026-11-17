@@ -33,7 +33,7 @@ import { getPhotoUri, getPlace, isPlaceId, searchPlaces, suggestCities, suggestP
 import { HttpError, json, readJson } from "./http";
 import { getStats, isAdmin, requireAdmin } from "./stats";
 import { getGoogleQuotas } from "./googleCloud";
-import { areaVenues, getVenue, importAuthority, listAuthorities, searchVenues } from "./venues";
+import { areaVenues, getVenue, importAuthority, listAuthorities, listTowns, searchVenues } from "./venues";
 import { crawlPage } from "./sharePreview";
 import { CLIENT_EVENTS, recordUsage } from "./usage";
 
@@ -190,6 +190,9 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
   if (path === "/api/venues" && method === "GET") {
     track(url.searchParams.has("near") ? "venue_search_near_me" : "venue_search");
     return json(await searchVenues(env, url.searchParams), { headers: { "Cache-Control": "no-store" } });
+  }
+  if (path === "/api/venues/towns" && method === "GET") {
+    return json({ towns: await listTowns(env) }, { headers: { "Cache-Control": "public, max-age=60" } });
   }
   if ((m = path.match(/^\/api\/venues\/area\/([^/]{1,80})$/)) && method === "GET") {
     track("venue_area_viewed");

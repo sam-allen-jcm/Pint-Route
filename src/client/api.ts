@@ -129,6 +129,9 @@ export const api = {
     if (opts.page) params.set("page", String(opts.page));
     return request<VenueSearchResult>(`/api/venues/area/${encodeURIComponent(area)}?${params}`);
   },
+  venueTowns() {
+    return request<{ towns: { name: string; slug: string; count: number }[] }>("/api/venues/towns").then((r) => r.towns);
+  },
   getVenue(slug: string) {
     return request<VenueDetails>(`/api/venues/${slug}`);
   },

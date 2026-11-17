@@ -2211,3 +2211,39 @@ input[type="time"]::-webkit-date-and-time-value {
   padding: 0;
   margin: 0;
 }
+.town-section {
+  margin-top: 24px;
+}
+.town-filter {
+  width: 100%;
+}
+.town-letter {
+  font-size: 0.85rem;
+  color: var(--brass);
+  margin: 4px 0 6px;
+  letter-spacing: 0.08em;
+}
+.town-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px 12px;
+}
+.town-list a {
+  display: block;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.town-list a:hover {
+  border-color: var(--brass);
+}

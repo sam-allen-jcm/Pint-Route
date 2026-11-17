@@ -52,3 +52,15 @@ function remember(key: string, value: unknown, ttlSeconds: number) {
   }
   memory.set(key, { expires: Date.now() + ttlSeconds * 1000, value });
 }
+
+/** Drops a cached value early (e.g. after an import changes it). The shared cache is per data centre. */
+export async function forget(key: string): Promise<void> {
+  memory.delete(key);
+  const cache = typeof caches !== "undefined" ? (caches as unknown as { default: Cache }).default : undefined;
+  if (!cache) return;
+  try {
+    await cache.delete(new Request(`https://pint-route.internal/cache/${encodeURIComponent(key)}`));
+  } catch {
+    // ignore
+  }
+}

@@ -310,7 +310,9 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
   the name. Members' clubs are hidden unless the "Clubs" filter is chosen.
 - **Search** (`/pubs`): name/town words (D1 FTS5, prefix matching), a postcode or postcode
   district (`RG1`, `RG1 7XD`), or "Pubs near me" (bounding box, then exact distance). No Google
-  calls. **Area pages:** `/pubs/reading`, `/pubs/rg1`.
+  calls. **Area pages:** `/pubs/reading`, `/pubs/rg1`. With no search, `/pubs` shows **Browse by
+  town**: every imported town A–Z with its venue count (`venues.town_slug`, cached 10 minutes and
+  cleared after each import).
 - **Pub pages** (`/v/<slug>`): our data plus the FSA hygiene rating, and on first view the venue
   is matched to Google (text search for name + postcode near its location, accepting only a
   similarly named place within 250 m). Only the Place ID is stored; hours, photo and status are
@@ -373,7 +375,8 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 | `POST /api/me/delete` | session | `{ password }`, deletes the account and everything in it |
 | `GET /api/community?sort=top\|new&country=&q=&page=` | – | Public crawls |
 | `GET /api/venues?q=\|near=lat,lng&kind=&page=` | – | Search the pub directory (our data only) |
-| `GET /api/venues/area/:area?kind=&page=` | – | Every venue in a town, council area or postcode district |
+| `GET /api/venues/towns` | – | Every town with venues and its count, for "Browse by town" |
+| `GET /api/venues/area/:area?kind=&page=` | – | Every venue in a town (by `town_slug`), council area or postcode district |
 | `GET /api/venues/:slug` | – | A pub's page: our data, hygiene rating, live Google details once matched, public crawls including it |
 | `GET /api/admin/venues/authorities` | admin | FSA council areas with our import status |
 | `POST /api/admin/venues/import` | admin | `{ authorityId }` imports or refreshes that area |

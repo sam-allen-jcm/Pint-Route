@@ -266,6 +266,8 @@ export interface VenueDetails extends Omit<VenueSummary, "distanceMeters"> {
   hygiene: { rating: string; date: string | null; url: string } | null;
   /** Live from Google (hours, photo, phone…), when the venue is matched to a Google place. */
   place: PlaceDetails | null;
+  /** For the "More pubs in <town>" link. */
+  townSlug: string | null;
   /** Google Place ID, needed to add the venue to a crawl. */
   placeId: string | null;
   /** Public crawls that include this venue. */

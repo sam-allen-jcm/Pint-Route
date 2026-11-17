@@ -4,6 +4,7 @@ import type { LatLng, VenueSearchResult, VenueSummary } from "../../shared/types
 import { api } from "../api";
 import { SiteFooter } from "../components/SiteFooter";
 import { TopNav } from "../components/TopNav";
+import { TownList } from "../components/TownList";
 import { formatDistance } from "../format";
 import { KIND_FILTERS, KIND_LABELS } from "../venues";
 
@@ -142,6 +143,8 @@ export function VenueSearchPage() {
           </button>
         </>
       )}
+
+      {!area && !q && !near && <TownList />}
 
       {(area || q || near) && (
         <div className="chip-row" role="group" aria-label="Type of venue">

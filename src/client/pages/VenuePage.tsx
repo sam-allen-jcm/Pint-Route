@@ -184,7 +184,7 @@ export function VenuePage() {
 
       <section className="venue-more">
         {venue.town && (
-          <Link className="text-btn" to={`/pubs/${areaSlug(venue.town)}`}>
+          <Link className="text-btn" to={`/pubs/${venue.townSlug ?? areaSlug(venue.town)}`}>
             More pubs in {venue.town} ›
           </Link>
         )}
