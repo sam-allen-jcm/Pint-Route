@@ -179,11 +179,12 @@ registration once over the threshold. Get a solicitor to review.
 - [ ] **Per-crawl preview image:** a generated image with the crawl name and stop count (e.g.
       Workers + `@vercel/og`/Satori), to go with the per-crawl title already in
       `src/worker/sharePreview.ts`
-- [ ] **"Directions" link per leg** that opens Google Maps walking navigation
-- [ ] **Skip visited / closed pubs** in the remaining route
-- [ ] **Drag-to-reorder** stops (currently ▲/▼ buttons)
+- [x] **"Directions" link per leg** that opens Google Maps walking navigation (done)
+- [x] **Skip visited / closed pubs** in the remaining route (done: on by default once there's
+      something to skip; the route runs from the last visited pub)
+- [x] **Drag-to-reorder** stops (done: ⠿ handle in Edit crawl; ▲/▼ kept for accessibility)
 - [x] **Rate limiting** on the Google-backed endpoints and crawl creation (done; see README
       "Accounts"). Also done: account required to create, email verification before sharing,
       links blocked in names/notes
 - [ ] **Cloudflare Turnstile** on sign-up, if bot sign-ups appear (needs CookieYes/legal check)
-- [ ] **Report a crawl** link on shared crawls, so abuse reaches legal@pintroute.com quickly
+- [x] **Report a crawl** link on shared and public crawls (done: emails legal@pintroute.com)

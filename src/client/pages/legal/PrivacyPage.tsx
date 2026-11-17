@@ -213,7 +213,9 @@ export function PrivacyPage() {
         <li>
           <strong>Google LLC (Google Maps Platform)</strong>: pub search, pub details, opening hours, photos, walking
           routes and the map. Searches (and your location, if you tap "near me") are sent to Google. When you view the
-          map or pub photos, your browser connects to Google directly, so Google receives your IP address. Google's use
+          map or pub photos, your browser connects to Google directly, so Google receives your IP address. If you tap{" "}
+          <strong>Directions</strong>, Google Maps opens with the two places for that walk; anything Google Maps then
+          does (such as using your location to guide you) is between you and Google. Google's use
           of this data is governed by the{" "}
           <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">
             Google Privacy Policy

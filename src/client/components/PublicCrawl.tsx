@@ -7,6 +7,13 @@ import { LEGAL } from "../legal/config";
 import { savedCrawls } from "../storage";
 import { RatingBadge, StarInput } from "./Stars";
 
+/** Opens an email to us about a crawl (spam, offensive content, …). */
+export function reportUrl(slug: string): string {
+  const subject = encodeURIComponent(`Report: crawl ${slug}`);
+  const body = encodeURIComponent(`Crawl: ${location.origin}/c/${slug}\nWhat's wrong with it:\n`);
+  return `mailto:${LEGAL.email}?subject=${subject}&body=${body}`;
+}
+
 /** Shown to visitors of a public crawl: who made it, its rating, and Copy / Rate / Report. */
 export function PublicCrawlPanel({ crawl, onChange }: { crawl: Crawl; onChange: (c: Crawl) => void }) {
   const { user, isAdmin } = useAuth();
@@ -58,9 +65,7 @@ export function PublicCrawlPanel({ crawl, onChange }: { crawl: Crawl; onChange: 
     }
   }
 
-  const report = `mailto:${LEGAL.email}?subject=${encodeURIComponent(`Report: crawl ${crawl.slug}`)}&body=${encodeURIComponent(
-    `Crawl: ${location.origin}${here}\nWhat's wrong with it:\n`,
-  )}`;
+  const report = reportUrl(crawl.slug);
 
   return (
     <section className="card public-panel" aria-label="Community">

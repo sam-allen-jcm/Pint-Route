@@ -24,7 +24,7 @@ import { SiteFooter } from "../components/SiteFooter";
 import { StopCard } from "../components/StopCard";
 import { useAuth } from "../auth";
 import { VerifyBanner } from "../components/VerifyBanner";
-import { PublicCrawlPanel, PublishCard } from "../components/PublicCrawl";
+import { PublicCrawlPanel, PublishCard, reportUrl } from "../components/PublicCrawl";
 import { CrawlNameEditor } from "../components/CrawlNameEditor";
 import { formatDistance, formatDuration } from "../format";
 import { savedCrawls } from "../storage";
@@ -136,10 +136,27 @@ export function CrawlPage() {
     };
   }, [placeIds, places]);
 
+  // ---- Skipping pubs already visited (or closed) ----
+  // On by default once there's something to skip: the route then runs from the
+  // last pub you went to, through the ones still to go.
+  const [skipDone, setSkipDone] = useState(true);
+  const allStops = crawl?.stops ?? [];
+  const isClosed = (stop: Stop) => {
+    const status = places[stop.placeId]?.businessStatus;
+    return status === "CLOSED_PERMANENTLY" || status === "CLOSED_TEMPORARILY";
+  };
+  const skippable = allStops.filter((st) => st.visitedOn || isClosed(st));
+  const skipping = skipDone && skippable.length > 0;
+  const remaining = skipping ? allStops.filter((st) => !st.visitedOn && !isClosed(st)) : allStops;
+  const lastVisited = skipping ? ([...allStops].reverse().find((st) => st.visitedOn && !isClosed(st)) ?? null) : null;
+  const fromStop = remaining.length ? lastVisited : null;
+  const routeSeq = fromStop ? [fromStop, ...remaining] : remaining;
+
   // ---- Walking route, refetched whenever the stops on screen change ----
-  // Includes the meeting point, so changing it refetches the route.
+  // Includes the meeting point (until the group is under way), so changing it refetches the route.
   const meetId = crawl?.meetingPoint?.placeId ?? "";
-  const routeKey = `${meetId}|${crawl?.stops.map((s) => s.id).join(",") ?? ""}`;
+  const fromMeeting = Boolean(meetId) && !(skipping && allStops.some((st) => st.visitedOn));
+  const routeKey = `${fromMeeting ? meetId : ""}|${routeSeq.map((st) => st.id).join(",")}`;
   useEffect(() => {
     const [meet, ids] = routeKey.split("|");
     const stopIds = ids ? ids.split(",").map(Number) : [];
@@ -151,7 +168,7 @@ export function CrawlPage() {
     let cancelled = false;
     const timer = setTimeout(() => {
       api
-        .getRoute(slug, stopIds)
+        .getRoute(slug, stopIds, Boolean(meet))
         .then((r) => {
           if (cancelled) return;
           setRoute(r);
@@ -222,9 +239,14 @@ export function CrawlPage() {
   }
 
   async function move(index: number, dir: -1 | 1) {
+    await moveTo(index, index + dir);
+  }
+
+  async function moveTo(from: number, to: number) {
+    if (from === to || to < 0 || to >= stops.length) return;
     const next = [...stops];
-    const [item] = next.splice(index, 1);
-    next.splice(index + dir, 0, item);
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
     setStops(next);
     const updated = await act((t) =>
       api.reorderStops(
@@ -272,15 +294,23 @@ export function CrawlPage() {
   // Only trust legs that join two stops that are still next to each other, so a
   // delete or reorder never leaves a stale line on the map while the new route loads.
   const legByPair = new Map(route?.legs.map((leg) => [`${leg.fromStopId}>${leg.toStopId}`, leg]) ?? []);
+  const legBetween = (from: number, to: number) => legByPair.get(`${from}>${to}`) ?? null;
   function legAfter(i: number) {
     if (i >= stops.length - 1) return null;
-    return legByPair.get(`${stops[i].id}>${stops[i + 1].id}`) ?? null;
+    return legBetween(stops[i].id, stops[i + 1].id);
   }
   const meeting = crawl.meetingPoint;
+  const showMeeting = Boolean(meeting) && (!skipping || fromMeeting);
   // Walk from the meeting point to the first pub.
-  const meetingLeg = meeting && stops.length ? (legByPair.get(`${MEETING_POINT_ID}>${stops[0].id}`) ?? null) : null;
-  const currentLegs = [...(meetingLeg ? [meetingLeg] : []), ...stops.slice(0, -1).flatMap((_, i) => legAfter(i) ?? [])];
-  const expectedLegs = Math.max(stops.length - 1, 0) + (meeting && stops.length ? 1 : 0);
+  const meetingLeg = meeting && fromMeeting && routeSeq.length ? legBetween(MEETING_POINT_ID, routeSeq[0].id) : null;
+  const seqLegs = routeSeq.slice(0, -1).flatMap((st, i) => legBetween(st.id, routeSeq[i + 1].id) ?? []);
+  const currentLegs = [...(meetingLeg ? [meetingLeg] : []), ...seqLegs];
+  const expectedLegs = Math.max(routeSeq.length - 1, 0) + (meeting && fromMeeting && routeSeq.length ? 1 : 0);
+  /** Name/address/id for directions links. */
+  const spot = (stop: Stop): Spot => {
+    const place = places[stop.placeId];
+    return { placeId: stop.placeId, name: place?.name ?? "", address: place?.address ?? "" };
+  };
   const routeFresh = expectedLegs > 0 && currentLegs.length === expectedLegs;
   const shownRoute: CrawlRoute | null = route
     ? {
@@ -291,7 +321,10 @@ export function CrawlPage() {
     : null;
 
   // Estimated arrival at each stop, if the crawl has a start time.
-  const timings = planArrivals(crawl.startsAt, crawl.minutesPerStop, stops, places, meetingLeg, legAfter);
+  // Mid-crawl (skipping), arrival estimates from the start time no longer mean much: show opening hours.
+  const timings = skipping
+    ? null
+    : planArrivals(crawl.startsAt, crawl.minutesPerStop, stops, places, meetingLeg, legAfter);
   const start = parseStart(crawl.startsAt);
   const finish = finishTime(timings, crawl.minutesPerStop);
   const scheduleLine = start ? (
@@ -302,32 +335,54 @@ export function CrawlPage() {
     </div>
   ) : null;
 
-  const meetingSection = meeting ? (
-    <div className="meeting">
-      {meeting ? (
-        <article className="stop meeting-card">
-          <div className="stop-main">
-            <div className="stop-num meeting-icon" aria-label="Meeting point">
-              🚩
+  function stopCard(stop: Stop, i: number) {
+    return (
+      <StopCard
+        stop={stop}
+        index={i}
+        place={places[stop.placeId]}
+        canEdit={canEdit}
+        canNote={canEdit && Boolean(user)}
+        onUpdate={(patch) => updateStop(stop, patch)}
+        timing={timings?.[i] ?? null}
+        day={!timings && start ? start.date : null}
+      />
+    );
+  }
+
+  const meetingSection =
+    meeting && showMeeting ? (
+      <div className="meeting">
+        {meeting ? (
+          <article className="stop meeting-card">
+            <div className="stop-main">
+              <div className="stop-num meeting-icon" aria-label="Meeting point">
+                🚩
+              </div>
+              <div className="stop-body">
+                <div className="meeting-label">Meeting point{start && ` · ${formatClock(start)}`}</div>
+                <h3 className="stop-name">{meeting.name}</h3>
+                {meeting.address && <div className="stop-address">{meeting.address}</div>}
+                {meeting.googleMapsUri && (
+                  <a className="small-link" href={meeting.googleMapsUri} target="_blank" rel="noreferrer">
+                    Open in Google Maps ↗
+                  </a>
+                )}
+              </div>
             </div>
-            <div className="stop-body">
-              <div className="meeting-label">Meeting point{start && ` · ${formatClock(start)}`}</div>
-              <h3 className="stop-name">{meeting.name}</h3>
-              {meeting.address && <div className="stop-address">{meeting.address}</div>}
-              {meeting.googleMapsUri && (
-                <a className="small-link" href={meeting.googleMapsUri} target="_blank" rel="noreferrer">
-                  Open in Google Maps ↗
-                </a>
-              )}
-            </div>
-          </div>
-        </article>
-      ) : null}
-      {meeting && stops.length > 0 && (
-        <LegRow leg={meetingLeg} failed={Boolean(routeError)} label="Walk to the first stop" />
-      )}
-    </div>
-  ) : null;
+          </article>
+        ) : null}
+        {meeting && routeSeq.length > 0 && (
+          <LegRow
+            leg={meetingLeg}
+            failed={Boolean(routeError)}
+            label="Walk to the first stop"
+            from={{ placeId: meeting.placeId, name: meeting.name, address: meeting.address }}
+            to={spot(routeSeq[0])}
+          />
+        )}
+      </div>
+    ) : null;
 
   const stopsPanel = (
     <section className="stack">
@@ -347,26 +402,65 @@ export function CrawlPage() {
           )}
         </div>
       ) : (
-        <ol className="stops">
-          {stops.map((stop, i) => {
-            const leg = legAfter(i);
-            return (
-              <li key={stop.id}>
-                <StopCard
-                  stop={stop}
-                  index={i}
-                  place={places[stop.placeId]}
-                  canEdit={canEdit}
-                  canNote={canEdit && Boolean(user)}
-                  onUpdate={(patch) => updateStop(stop, patch)}
-                  timing={timings?.[i] ?? null}
-                  day={!timings && start ? start.date : null}
+        <>
+          {skippable.length > 0 && (
+            <label className="skip-toggle">
+              <input type="checkbox" checked={skipDone} onChange={(e) => setSkipDone(e.target.checked)} />
+              <span>
+                Skip visited &amp; closed pubs <span className="muted">({skippable.length})</span>
+              </span>
+            </label>
+          )}
+          <ol className="stops">
+            {fromStop && (
+              <li className="leg-from">
+                <LegRow
+                  leg={legBetween(fromStop.id, remaining[0].id)}
+                  failed={Boolean(routeError)}
+                  label={`Walk from ${spot(fromStop).name || "your last pub"}`}
+                  prefix={`From ${spot(fromStop).name || "your last pub"}:`}
+                  from={spot(fromStop)}
+                  to={spot(remaining[0])}
                 />
-                {i < stops.length - 1 && <LegRow leg={leg} failed={Boolean(routeError)} />}
               </li>
-            );
-          })}
-        </ol>
+            )}
+            {remaining.map((stop, j) => {
+              const i = stops.indexOf(stop);
+              const next = remaining[j + 1];
+              return (
+                <li key={stop.id}>
+                  {stopCard(stop, i)}
+                  {next && (
+                    <LegRow
+                      leg={legBetween(stop.id, next.id)}
+                      failed={Boolean(routeError)}
+                      from={spot(stop)}
+                      to={spot(next)}
+                    />
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+          {skipping && remaining.length === 0 && (
+            <div className="empty">
+              <div className="empty-icon" aria-hidden>
+                🎉
+              </div>
+              <p>That's every pub done. Cheers!</p>
+            </div>
+          )}
+          {skipping && (
+            <section className="stack skipped-stops">
+              <h3 className="section-title">Visited &amp; skipped</h3>
+              <ol className="stops">
+                {skippable.map((stop) => (
+                  <li key={stop.id}>{stopCard(stop, stops.indexOf(stop))}</li>
+                ))}
+              </ol>
+            </section>
+          )}
+        </>
       )}
       {stops.length > 0 && <p className="attribution">Pub details from Google Maps</p>}
       {canEdit && !user && stops.length > 0 && (
@@ -389,6 +483,7 @@ export function CrawlPage() {
         meetingPoint={meeting}
         startsAt={crawl.startsAt}
         onMove={move}
+        onReorder={moveTo}
         onRemove={remove}
         onEditMeeting={() => setEditingMeeting(true)}
       />
@@ -529,7 +624,10 @@ export function CrawlPage() {
                   {" "}
                   or <Link to={`/login?next=${encodeURIComponent(`/c/${slug}`)}`}>log in</Link> if it's yours.
                 </>
-              )}
+              )}{" "}
+              <a className="banner-report" href={reportUrl(slug)}>
+                Report
+              </a>
             </div>
           )}
           {actionError && (
@@ -577,25 +675,57 @@ export function CrawlPage() {
   );
 }
 
+/** A place to give Google Maps for directions. */
+interface Spot {
+  placeId: string;
+  name: string;
+  address: string;
+}
+
+/** Google Maps walking directions between two places (opens the app on phones). */
+function directionsUrl(from: Spot, to: Spot): string {
+  const params = new URLSearchParams({
+    api: "1",
+    origin: [from.name, from.address].filter(Boolean).join(", ") || from.placeId,
+    origin_place_id: from.placeId,
+    destination: [to.name, to.address].filter(Boolean).join(", ") || to.placeId,
+    destination_place_id: to.placeId,
+    travelmode: "walking",
+  });
+  return `https://www.google.com/maps/dir/?${params}`;
+}
+
 function LegRow({
   leg,
   failed,
   label = "Walk to next stop",
+  prefix,
+  from,
+  to,
 }: {
   leg: RouteLeg | null;
   failed: boolean;
   label?: string;
+  prefix?: string;
+  from?: Spot;
+  to?: Spot;
 }) {
   return (
     <div className="leg" aria-label={label}>
       <span className="leg-line" aria-hidden />
       <span className="leg-text">
+        {prefix && <>{prefix} </>}
         {leg
           ? `🚶 ${formatDuration(leg.durationSeconds)} · ${formatDistance(leg.distanceMeters)}${leg.direct ? " · just across the road" : ""}`
           : failed
             ? "🚶 walk"
             : "🚶 …"}
       </span>
+      {from && to && (
+        <a className="leg-directions" href={directionsUrl(from, to)} target="_blank" rel="noreferrer">
+          Directions ↗
+        </a>
+      )}
     </div>
   );
 }

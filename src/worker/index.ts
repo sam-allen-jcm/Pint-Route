@@ -285,8 +285,10 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
     // No browser caching: the route changes whenever stops change (the Worker
     // still caches Google's answer per place sequence).
     const { meetPlaceId, stops } = await getStopsForRoute(env, m[1], order, request);
-    // The walk starts at the meeting point, if there is one.
-    const waypoints = [...(meetPlaceId && stops.length ? [{ id: MEETING_POINT_ID, placeId: meetPlaceId }] : []), ...stops];
+    // The walk starts at the meeting point, if there is one, unless the group is
+    // already under way (?meet=0, when skipping pubs they've been to).
+    const fromMeeting = meetPlaceId && stops.length && url.searchParams.get("meet") !== "0";
+    const waypoints = [...(fromMeeting ? [{ id: MEETING_POINT_ID, placeId: meetPlaceId }] : []), ...stops];
     return json(await walkingRoute(env, waypoints));
   }
   if ((m = path.match(new RegExp(`^/api/crawls/${SLUG}/stops$`))) && method === "POST") {

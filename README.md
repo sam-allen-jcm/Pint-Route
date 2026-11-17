@@ -300,6 +300,18 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 - **Moderation**: public crawls have a Report link (emails legal@pintroute.com). Accounts in
   `ADMIN_EMAILS` see an "Unpublish (admin)" button on public crawls.
 
+### On the night
+
+- **Directions:** every walk between stops has a "Directions ↗" link to Google Maps walking
+  directions (Maps URLs, with Place IDs), which opens the Maps app on phones.
+- **Skip visited & closed pubs:** once a pub is ticked off or Google says it's closed, a switch
+  (on by default) re-plans the route from the last visited pub through the ones still to go
+  (`/route?stops=…&meet=0`), and moves the rest to a "Visited & skipped" list. Arrival
+  estimates are hidden while skipping (pubs show their opening hours instead).
+- **Drag to reorder** stops by the ⠿ handle in Edit crawl (pointer events, so mouse and touch);
+  the ▲/▼ buttons stay for keyboard and screen-reader users.
+- **Report:** shared and public crawls have a Report link that emails legal@pintroute.com.
+
 ### Sharing & editing
 
 - Creating a crawl returns a random public **slug** (`/c/<slug>`) and a random private
@@ -346,7 +358,7 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 | `GET /api/crawls/:slug` | optional | Crawl + stops (`canEdit` from the token or ownership, `isOwner`, `ownerVerified`). 403 `unverified` for non-editors until the owner confirms their email |
 | `PATCH /api/crawls/:slug` | edit | `{ name }`, `{ countryCode, cityPlaceId?, sessionToken? }` and/or `{ meetPlaceId \| null, sessionToken? }` |
 | `DELETE /api/crawls/:slug` | edit | Delete crawl |
-| `GET /api/crawls/:slug/route?stops=1,2,3` | – | Walking route through the given stop ids in that order (defaults to the saved order): per-leg time, distance and polyline |
+| `GET /api/crawls/:slug/route?stops=1,2,3&meet=0` | – | Walking route through the given stop ids in that order (defaults to the saved order): per-leg time, distance and polyline. Starts at the meeting point unless `meet=0` |
 | `POST /api/crawls/:slug/stops` | edit | Add a stop `{ placeId }` |
 | `POST /api/events` | – | `{ event }` anonymous count for browser-only actions (allow-listed) |
 | `GET /api/admin/stats?days=7\|30\|90` | admin | Usage dashboard data |

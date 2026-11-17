@@ -209,8 +209,9 @@ export const api = {
   deleteCrawl(slug: string, editToken: string | null) {
     return request<{ ok: true }>(`/api/crawls/${slug}`, { method: "DELETE", editToken });
   },
-  getRoute(slug: string, stopIds: number[]) {
-    return request<CrawlRoute>(`/api/crawls/${slug}/route?stops=${stopIds.join(",")}`);
+  /** Walking route through these stops, in this order (from the meeting point unless fromMeeting is false). */
+  getRoute(slug: string, stopIds: number[], fromMeeting = true) {
+    return request<CrawlRoute>(`/api/crawls/${slug}/route?stops=${stopIds.join(",")}${fromMeeting ? "" : "&meet=0"}`);
   },
   addStop(slug: string, placeId: string, editToken: string | null) {
     return request<Stop>(`/api/crawls/${slug}/stops`, { method: "POST", body: JSON.stringify({ placeId }), editToken });

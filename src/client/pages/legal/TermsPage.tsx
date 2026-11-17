@@ -110,7 +110,7 @@ export function TermsPage() {
         <li>
           We decide what appears in the Community and how it's ordered. We may remove a crawl from the Community, or
           remove ratings, that break these terms or that we reasonably think are misleading or inappropriate. To report
-          a public crawl, use its Report link or email <LegalEmail email={email} />.
+          a crawl, public or shared with you, use its Report link or email <LegalEmail email={email} />.
         </li>
         <li>
           Pubs on public crawls are suggestions from other users. We don't check or endorse them, and their details

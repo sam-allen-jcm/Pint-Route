@@ -1980,3 +1980,78 @@ input[type="time"]::-webkit-date-and-time-value {
   font-size: 0.7em;
   opacity: 0.6;
 }
+
+/* ---------- on the night: directions, skipping, drag to reorder ---------- */
+.leg-directions {
+  margin-left: auto;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--sign-green-2);
+  text-decoration: none;
+  white-space: nowrap;
+  padding: 6px 4px;
+}
+.leg-from .leg {
+  padding-top: 0;
+}
+.skip-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+.skip-toggle input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--sign-green);
+  flex: none;
+}
+.skipped-stops {
+  margin-top: 10px;
+  opacity: 0.85;
+}
+.skipped-stops .stops {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.drag-handle {
+  flex: none;
+  width: 22px;
+  margin: -8px 0 -8px -6px;
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 1.2rem;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.edit-row.drag-active {
+  transition: transform 0.15s ease;
+  position: relative;
+}
+.edit-row.dragging {
+  transition: none;
+  z-index: 2;
+  background: var(--surface-2);
+  box-shadow: 0 6px 18px rgb(43 26 16 / 0.25);
+}
+.edit-row.dragging .drag-handle {
+  cursor: grabbing;
+}
+.banner-report {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.edit-row.drag-active {
+  user-select: none;
+  -webkit-user-select: none;
+}
