@@ -28,7 +28,8 @@ with whom?* Answer that well on a phone in under 10 seconds and the rest follows
 | **2. For Businesses** | Claim a venue, verify the claimant, owner dashboard, edit profile, Business Terms | 3–4 weeks | 1 |
 | **3. Features and sport** | Structured features (pool, darts, Sky/TNT, garden, dogs…), crowd-confirmed; "showing the match" listings | 3–4 weeks | 1 (2 for owner edits) |
 | **4. Beer** | Breweries and beer catalogue, tap lists with freshness, snap-the-board photo import, crowd pint prices | 4–6 weeks | 2 |
-| **5. Ratings and social** | Structured ratings and the type-aware Pint Route Score (section 5), check-ins, friends, photos, group plans and RSVPs | 5–7 weeks | 1 (3 for venue types) |
+| **5. Ratings** | Structured ratings and the type-aware Pint Route Score (section 5) | 3–4 weeks | 1 (3 for venue types) |
+| **5b. Social community** | Friends, crews on crawls (RSVP, shared progress, everyone rates), local feed, pub events, notifications, badges (section 6) | 5–7 weeks | 5; events need 2 |
 | **6. Money** | Venue Pro subscription, local sponsored placement, brewery tier, Stripe billing | 3–4 weeks | 2 (+ traffic) |
 | **7. Apps** | PWA, then App Store / Google Play (section 10) | see section 10 | ideally after 3 |
 
@@ -41,6 +42,8 @@ with whom?* Answer that well on a phone in under 10 seconds and the rest follows
 5. **Sport fixtures:** pay for a licensed fixtures feed, or let pubs type in what they're showing? (section 3)
 6. ~~Written reviews of pubs?~~ **Decided:** no free text; a structured, type-aware rating system instead (section 5).
 7. **Business set-up:** stay as SA Consulting, or form a limited company before taking money from venues? (section 9)
+8. **Friends model:** mutual friends (request and accept, recommended) or one-way following like Instagram? (section 6)
+9. **Direct messages:** leave them out and link to WhatsApp instead (recommended), or build chat? (section 6)
 
 ---
 
@@ -357,21 +360,102 @@ weights, must-haves). Crawl ratings (the 1–5 stars on public crawls) stay sepa
 
 ---
 
-## 6. Social layer (simple, not Untappd)
+## 6. Social community
 
-Keep it light and centred on *going out together*:
-- **Check in** at a venue ("I'm at The Bell"). Visible to friends only by default, with an
-  option for nobody. Check-ins also drive crawl tick-offs and "still true?" prompts.
-- **Friends / follow:** see where friends have been and their public crawls. Location sharing
-  is always **opt-in, time-limited and off by default** (location is sensitive data).
-- **Group plans:** "Friday drinks": invite friends, RSVP, vote between 3 pubs, then it becomes
-  a crawl. This merges with the Party Pack RSVPs (section 7b).
-- **Ratings** are covered in section 5. **Photos** (by visitors and owners) need moderation
-  (an automated first pass plus a report button), **location data stripped** from uploads, and
-  an Online Safety Act risk assessment before launch.
-- **Badges, done responsibly:** "visited 10 pubs in Leeds", "5 breweries' taprooms", "a pub
-  showing every Premier League ground". **Never** rewards based on how much someone drinks
-  (CAP Code / Portman Group spirit).
+Keep it simple and centred on *going out together*, not a general social network. Every
+social feature should lead to people meeting in a pub, and produce better data along the way
+(ratings, check-ins, features).
+
+### Friends
+
+- **Mutual friends** (request and accept), not one-way following: it suits planning nights out
+  with people you know, and keeps check-ins private. Find friends by **username**, by an
+  **invite link** ("Join me on Pint Route"), or by adding people you've been on a crawl with.
+  No contact-book upload (privacy- and app-store-sensitive). Maybe later, opt-in only.
+- **Public profile** `/u/<username>`: public crawls, badges, towns visited, and (if the user
+  chooses) their ratings. Everything else is friends-only or private.
+- **Privacy controls in My account:** who can send me requests (everyone / friends of friends
+  / nobody), who sees my check-ins (friends / nobody), and whether I appear in "who's here".
+  Plus **block** and **report** on every profile. Defaults are the most private sensible
+  option.
+
+### Crawls with friends ("the crew")
+
+- The organiser **adds friends to a crawl** (or shares an invite link). Each person gets a
+  role: **organiser** (everything), **co-organiser** (edit stops and times) or **going**
+  (view, tick off, rate, chat-free).
+- **RSVP:** going / maybe / can't make it, plus "joining at stop 3". The organiser sees the
+  list; it replaces chasing people on WhatsApp (and becomes a Party Pack perk, section 7b).
+- **Shared progress:** anyone in the crew can tick a pub off, and everyone sees where the group
+  is now ("The crew is at stop 3: The Bell"). Live location stays opt-in and time-limited.
+- **Notifications:** crawl starts in an hour, stop changed, someone joined. By email now, and
+  push once there's an app. Each type can be switched off.
+- **Each person rates:** after each pub, everyone in the crew gets the 30-second venue rating
+  (section 5). These are **verified visits**, so they're the most trusted ratings we get.
+  At the end, everyone rates **the crawl** (1–5), and gets a **recap card**: route, pubs, who
+  came, distance walked, everyone's favourite stop. Easy to share, and free marketing.
+- **Crawl ratings:** ratings from people who actually did the crawl are marked "went on it"
+  and weighted above ratings from people who only browsed it in the Community. That extends
+  today's crawl rating, where only public crawls can be rated.
+
+### Local feed ("What's on near you")
+
+A home-screen feed for the user's area (the town they choose, or near me when they've tapped
+it), mixing:
+- **Pub events:** quiz nights, live music, tap takeovers, meet-the-brewer, beer festivals,
+  "showing the match tonight" (sections 2 and 3).
+- **New and trending:** newly claimed venues, new taprooms, highest-rated this month, a
+  venue's new beer on the board.
+- **Community:** new public crawls in the area, crawls friends are going on (with a "join"
+  button if invited), friends' check-ins and new badges.
+- **Ranking:** relevance to the user (distance, their tastes from section 5, friends
+  involved), then freshness. **Sponsored items** are clearly labelled and capped (e.g. 1 in
+  10), and never shown as friend activity.
+
+### Local pub events
+
+- **Venues post events** from the owner dashboard: title, date/time, type (quiz, live music,
+  sport, tap takeover, food night, festival), optional ticket/booking link, and a repeat rule
+  ("every Tuesday"). Free for claimed venues; Pro venues get promoted placement (section 7a).
+- **Users can add events** for unclaimed venues ("Quiz every Wednesday"), confirmed by others,
+  like features. Free text is kept short and checked for links and banned words, with a report
+  button.
+- Users can tap **"Interested"** / **"Going"**, add the event to a crawl ("start at the quiz"),
+  and add it to their calendar (.ics download, no third-party calendar access).
+- **Event listings** per area and per type: "Quiz nights in Reading this week", "Tap
+  takeovers in Leeds". These are great search-engine landing pages too.
+
+### Things to steer clear of (for now)
+
+- **Direct messages and group chat:** high moderation burden and the heaviest **Online Safety
+  Act** duties. Groups already use WhatsApp, so link to it ("share to the group") instead.
+- **Public "who's in the pub right now" lists:** a safety risk (stalking, harassment). Only
+  ever friends-only and opt-in.
+- **Drinking-volume features** (pints counted, "drink 5 beers" challenges): against the CAP
+  Code and Portman Group spirit, and bad for the brand. Badges reward **places**, not **pints**.
+
+### Badges
+
+"Visited 10 pubs in Leeds", "5 breweries' taprooms", "a pub near every Premier League ground",
+"First to rate a new venue", "Local scout" (section 5).
+
+### Legal and safety checklist for this phase
+
+New personal data (friendships, check-ins, RSVPs, crawl membership, event attendance,
+preferences) goes in the Privacy Policy and data inventory. Notification emails need an
+unsubscribe link for each type. User-posted events and photos need an **Online Safety Act**
+risk assessment, reporting tools and a published approach to illegal content. Block and
+report must exist **before** friends launch. Location features stay opt-in, time-limited and
+off by default.
+
+### Data model (sketch)
+
+`friendships` (user_a, user_b, status, requested_by, created), `blocks`,
+`crawl_members` (crawl, user, role, rsvp, joining_at_stop), `check_ins` (user, venue, at,
+verified, visibility), `events` (venue, title, type, starts_at, repeat_rule, source:
+owner/user, confirmations, status), `event_responses` (event, user, interested/going),
+`notifications` (user, type, payload, read_at) and `notification_prefs`, `feed_items`
+(computed per area, or built at read time from the tables above).
 
 ---
 
