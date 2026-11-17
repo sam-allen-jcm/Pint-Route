@@ -3,12 +3,462 @@
 Planning notes for work that isn't built yet. Keep this file current: when something here gets
 built, move it out (or tick it off) and note anything learned.
 
-Anything below that touches personal data, payments, promotions, notifications or app-store
-listings also triggers the **legal-pages rule in `CLAUDE.md`**.
+Anything below that touches personal data, payments, promotions, reviews, notifications or
+app-store listings also triggers the **legal-pages rule in `CLAUDE.md`**.
 
 ---
 
-## 1. Phone apps (iOS and Android)
+## 0. The plan on one page
+
+**Where we're heading:** from a pub *crawl* planner to the place people go to find **the right
+pub**: the one showing the match, with a pool table, a good tap list and food until 9. Pubs,
+breweries and taprooms manage their own profiles, and that's what we eventually charge for.
+Crawls stay free and remain the social hook ("every shared link is free marketing").
+
+**What makes us different from Untappd and friends:** Untappd is great at rating beers but
+cluttered and weak socially. We stay simple and venue-first: *where should we go tonight, and
+with whom?* Answer that well on a phone in under 10 seconds and the rest follows.
+
+**Phases** (each one is useful on its own; estimates are for one developer working with Claude):
+
+| Phase | What | Rough size | Depends on |
+| --- | --- | --- | --- |
+| **0. Foundations** | Security hardening, automated tests and CI, admin roles, our own `venues` table seeded from open data | 2–3 weeks | – |
+| **1. Venue directory** | Search pubs/breweries/taprooms, venue profile pages, "all pubs in an area" pages, filters | 3–4 weeks | 0 |
+| **2. For Businesses** | Claim a venue, verify the claimant, owner dashboard, edit profile, Business Terms | 3–4 weeks | 1 |
+| **3. Features and sport** | Structured features (pool, darts, Sky/TNT, garden, dogs…), crowd-confirmed; "showing the match" listings | 3–4 weeks | 1 (2 for owner edits) |
+| **4. Beer** | Breweries and beer catalogue, tap lists with freshness, snap-the-board photo import, crowd pint prices | 4–6 weeks | 2 |
+| **5. Social** | Check-ins, friends, venue reviews and photos (fake-review safeguards), group plans and RSVPs | 4–6 weeks | 1 |
+| **6. Money** | Venue Pro subscription, local sponsored placement, brewery tier, Stripe billing | 3–4 weeks | 2 (+ traffic) |
+| **7. Apps** | PWA, then App Store / Google Play (section 9) | see section 9 | ideally after 3 |
+
+**Decisions needed from the owner** (each is discussed in the section shown):
+
+1. **UK only at first?** Recommended: yes. Our open data, licensing law and sport channels are all UK-specific (section 1).
+2. **Build our own venue database from open data** (Food Standards Agency, optionally OpenStreetMap) and link it to Google, rather than relying on Google alone? Recommended: yes (section 1).
+3. **How claimants are verified:** phone-call code to the venue's listed number, plus Google Business Profile sign-in, with manual review as a fallback? (section 2)
+4. **Prices:** crowd-reported "price of a pint" with dates, owners optional? (section 4)
+5. **Sport fixtures:** pay for a licensed fixtures feed, or let pubs type in what they're showing? (section 3)
+6. **Written reviews of pubs:** yes, from day one, or start with features, photos and "recommend" only? (section 5)
+7. **Business set-up:** stay as SA Consulting, or form a limited company before taking money from venues? (section 8)
+
+---
+
+## 1. Venue directory and profiles
+
+### What users get
+
+- **Search** for a pub, bar, brewery or taproom by name, or browse **near me** / **in an area**
+  ("all pubs in Reading", "pubs in RG1"), as a list and on a map.
+- **Filters:** open now, showing sport (and which channel), pool/darts, beer garden, dog
+  friendly, food now, real ale, craft/taproom, live music, quiz night, step-free access…
+- **Venue profile page** `/v/<slug>` (e.g. `/v/the-nags-head-reading`): photos, opening
+  hours, map, features, what's on, beers on tap, food, links, and crawls that include it.
+  Plus buttons for **add to a crawl**, **directions** and **share**.
+- **Area pages** `/pubs/reading`, `/pubs/rg1`: the landing pages for search engines, and later
+  the place where local sponsored slots live.
+
+### Where the data comes from (important)
+
+Google's Places terms say we may **store Place IDs only**. Names, hours, photos and ratings must
+be fetched live, with only short temporary caching, and can't be used to build our own
+database. Relying on Google alone has three problems:
+
+1. **Cost:** every profile view and every row in an area list is a paid Place Details call.
+   Search-engine crawlers visiting thousands of venue pages would run up the bill.
+2. **SEO:** pages made of Google content can't really be indexed as our own content.
+3. **Lock-in:** if Google changes prices or terms, the directory is gone.
+
+**Recommendation: our own `venues` table, seeded from open data, linked to Google:**
+
+| Source | What it gives us | Licence | Notes |
+| --- | --- | --- | --- |
+| **Food Standards Agency hygiene ratings** (API and bulk download) | Name, address, postcode, lat/lng and business type for almost every UK premises serving food or drink, including type "Pub/bar/nightclub" | **Open Government Licence** (store and reuse freely, with attribution) | Best base layer for the UK. Includes Scotland. Refreshed daily. |
+| **OpenStreetMap** (`amenity=pub/bar`, `craft=brewery`) | Names, locations, some tags (real ale, garden, food) | ODbL: **share-alike** if we publish a derived database | Useful to cross-check; take legal care before mixing it into our database |
+| **Google Places** (live) | Opening hours, photos, rating, "permanently closed", phone, website | Live display only; store the Place ID | Linked by matching name and location; fetched only when someone opens a profile |
+| **Owners** (once claimed) | Everything they choose to add | Licensed to us under the Business Terms | Always wins over other sources |
+| **Users** (crowd) | Features, pint prices, photos, corrections | Licensed to us under the Terms | Shown with "confirmed by 5 people · 3 days ago" |
+
+**Cost controls:** area lists come from *our* table (no Google calls). Google is only called
+for a single profile someone actually opens, and photos only load on demand.
+`robots.txt` and rate limits stop crawlers walking every profile. Keep a Google Cloud budget
+alert and daily caps (now visible on `/stats`).
+
+### Data model (sketch)
+
+`venues` (id, slug, name, kind: pub/bar/brewery/taproom/bottle-shop, address, postcode,
+outward code e.g. `RG1`, lat, lng, google_place_id, fsa_id, osm_id, status, claimed_by,
+created/updated), `venue_features` (venue, feature, value, source, confirmations,
+last_confirmed), `venue_hours_override` (owner's own hours, which win over Google),
+`venue_photos` (R2 key, uploader, moderation state), `areas` (towns, districts and postcode
+areas for area pages). Name search: D1 FTS5. "Near me": a bounding-box query on indexed
+lat/lng, then exact distance.
+
+---
+
+## 2. For Businesses: claiming a venue
+
+A **"For businesses"** link in the footer and on every unclaimed profile ("Is this your pub?
+Claim it free") leads to `/business`: a pitch page, then **search for your venue** (from our
+venue table, so nobody can create a fake place), then **claim it**.
+
+### Verifying that the claimant really runs the venue
+
+No single method is perfect, so we offer tiers, quickest first:
+
+| Method | How it works | Strength | Cost / effort |
+| --- | --- | --- | --- |
+| **Google Business Profile sign-in** | Claimant signs in with Google; the Business Profile API lists the locations they manage; if it matches this venue's Place ID, they're verified | Strong (Google has already verified them) | Free, but needs Google to approve our API access (apply early) |
+| **Phone call to the listed number** | We phone the venue's number *as listed on Google* (never one the claimant types in) and a robot reads out a 6-digit code | Strong: you must be in the pub to answer | ~5–10p per call (e.g. Twilio Verify, a new processor) |
+| **Email at the venue's own domain** | Code sent to `anything@<domain of the venue's listed website>` | Medium (watch for shared domains like pub-company sites) | Free (Resend) |
+| **Postcard to the venue address** | Code posted to the premises | Strong but slow (3–5 days) | ~£1 per postcard (print-and-post API) |
+| **Manual review** | Upload a **premises licence** (the licence holder and DPS appear on the council's public register) or a recent business bill; we check by hand and delete the document afterwards | Strong if done carefully | Our time |
+
+**Recommended:** phone code + Google sign-in as the automatic routes, manual review as the
+fallback. Rules:
+- One **owner** per venue, who can invite **managers/staff** (roles).
+- **Pub groups** (e.g. a managed estate) get a multi-venue account. Verify the company once,
+  then add sites.
+- **Disputes and changes of hands:** tenancies change often. A new claim on an
+  already-claimed venue triggers a review; the old owner is notified; claims lapse if an
+  owner stays inactive for 12 months.
+- **2-factor sign-in is required** for business accounts (section 7).
+- **Audit log** of every profile change (who, what, when), so a bad actor can be rolled back.
+- A **"Claimed ✓"** badge only appears after verification.
+
+### Owner dashboard (first version)
+
+Edit description, hours overrides, features, food times, links (menu, booking, socials), photos
+(upload with moderation), events, and later tap list and sport. Basic stats: profile views,
+times added to crawls, direction taps. All free, because claimed profiles are what make
+the directory good.
+
+---
+
+## 3. Features, sport and "what's on"
+
+### Features: a fixed list, not free text
+
+Free text can't be filtered, so features are a **fixed, structured list**, grouped:
+- **Sport:** Sky Sports, **TNT Sports** (formerly BT Sport), Amazon Prime Video sport,
+  Premier Sports, number of screens, big screen/projector, sound on for big games,
+  "shows racing", "shows rugby/cricket/darts/F1/boxing/NFL"
+- **Games:** pool, snooker, darts, table football, shuffleboard, board games, quiz night (day),
+  karaoke, live music (days)
+- **Drink:** real ale/cask (CAMRA-style; don't use CAMRA's trademarks), craft keg, taproom /
+  brewery on site, cider focus, cocktails, low/no alcohol range, wine list
+- **Food:** food served (times), Sunday roast, vegetarian/vegan options, kitchen closes at
+- **Space:** beer garden, roof terrace, covered/heated outdoor area, function room,
+  accommodation, parking, EV charging
+- **Who's welcome:** dog friendly, family friendly (until what time), student pub, sports pub,
+  quiet pub, LGBTQ+ friendly
+- **Access:** step-free entrance, accessible toilet, hearing loop
+- **Practical:** card only / cash only, late licence (until what time), Wi-Fi
+
+**Who fills it in:**
+1. **The crowd, from day one** (most pubs won't claim for a long time). Anyone logged in can
+   say "has a pool table" or "no longer shows Sky". Each feature shows its confirmations and
+   when it was last confirmed, and fades out if nobody re-confirms it. Visitors who have
+   just checked in get a quick "still true?" prompt.
+2. **Owners** of claimed venues can set features directly, and their answer wins (marked
+   "from the venue").
+
+### Sport: "who's showing the match?"
+
+- A **fixtures list** (football, rugby, cricket, F1, boxing, darts…) where each fixture shows
+  "showing near you". Venues tick the fixtures they're showing (plus "sound on", "booking
+  advised"). The crowd can report "was showing it ✓".
+- A "**Showing tonight**" filter on area pages and in search.
+- **Fixture data licensing:** Football DataCo licenses Premier League/EFL/SPFL fixture lists
+  and asserts rights in them. The legal position is contested, but in practice media
+  companies license them. **Options:** (a) buy from a sports-data provider whose licence
+  covers this use (budget roughly £50–£300 a month to start, check the licence terms), or (b) let
+  venues type in what they're showing (cheaper, messier). **Get legal advice before
+  launching football fixtures.**
+- **Brand names:** "shows Sky Sports" is a fair descriptive use of the name. **Don't use
+  Sky/TNT logos.** Business Terms must say venues are responsible for holding a
+  **commercial** subscription for any sport they show. We don't want to promote pubs
+  showing sport illegally on domestic subscriptions.
+- **Competitors to know:** Matchpint (sport-in-pubs app), the broadcasters' own pub finders,
+  WhatPub (CAMRA, real ale), Untappd (beer). Our angle is everything in one simple place,
+  plus crawls.
+
+---
+
+## 4. Beer, tap lists and prices
+
+### Beer catalogue
+
+- `breweries` and `beers` (name, style, ABV, brewery) tables, our own. **Breweries claim
+  their profile** (same verification as venues) and manage their own beer list. Users can
+  suggest missing beers, which are de-duplicated before going live.
+- Don't plan on the Untappd API: it's largely closed to new apps and its terms are
+  restrictive. If we want ratings of beers later, we can add simple thumbs/notes ourselves.
+
+### Tap lists that stay fresh (the hard part)
+
+Pubs won't keep a list up to date unless it takes seconds. Ideas, roughly in order of payoff:
+
+1. **"Still on?" one-tap updates:** the owner sees today's list and taps off anything that's
+   run out. A beer goes on in two taps from the brewery catalogue.
+2. **Snap the board:** the owner (or a regular) photographs the chalkboard or tap wall, and AI
+   (e.g. Claude's vision) reads it into a draft tap list for one-tap approval. This is the
+   lowest-effort way for pubs and a genuine differentiator. **New processor** (Anthropic), so
+   Privacy updates are needed, and photos must be checked for faces.
+3. **Freshness labels everywhere:** "Updated today" / "3 days ago" / hidden after 14 days
+   without an update, so stale lists never mislead.
+4. **Integrations later:** tap-list and stock systems some bars already use (e.g. Untappd for
+   Business, BeerMenus-style tools) and EPOS systems. Partner talks only once we have traffic.
+5. **Brewery "where to find our beer"** pages: breweries report which venues stock them.
+   Breweries are a natural *paying* customer for this (section 6).
+
+### Prices
+
+Most pubs won't publish prices or keep them current. Recommended approach:
+- **Crowd-reported "price of a pint"**: after a check-in, "what did you pay for a pint of
+  ___?". Store the beer, price, date and reporter (shown only as aggregated). Show "Pint from
+  £4.60 · reported 2 days ago" and a **£/££/£££ band** per venue.
+- **Owners can optionally** add prices to tap-list items.
+- This feeds great marketing: a "**Pint Price Index**" (cheapest/average pint by town), which
+  is very press-friendly.
+- Label prices clearly as "reported by visitors, check at the bar" (consumer-protection
+  accuracy), and reject outliers automatically.
+
+---
+
+## 5. Social layer (simple, not Untappd)
+
+Keep it light and centred on *going out together*:
+- **Check in** at a venue ("I'm at The Bell"). Visible to friends only by default, with an
+  option for nobody. Check-ins also drive crawl tick-offs and "still true?" prompts.
+- **Friends / follow:** see where friends have been and their public crawls. Location sharing
+  is always **opt-in, time-limited and off by default** (location is sensitive data).
+- **Group plans:** "Friday drinks": invite friends, RSVP, vote between 3 pubs, then it becomes
+  a crawl. This merges with the Party Pack RSVPs (section 6b).
+- **Venue reviews and photos.** If we do written reviews (decision 6), the **DMCC Act 2024**
+  (in force since April 2025) bans fake reviews and requires **reasonable steps to prevent and
+  remove** them. Safeguards: verified accounts only, one review per venue, "visited" only after
+  a check-in, rate limits, a report button, an owner right of reply, no incentivised reviews
+  unless clearly labelled, and a published review policy. Photos need moderation (automated
+  first pass plus a report button) and **location data stripped** from uploads.
+- **Badges, done responsibly:** "visited 10 pubs in Leeds", "5 breweries' taprooms", "a pub
+  showing every Premier League ground". **Never** rewards based on how much someone drinks
+  (CAP Code / Portman Group spirit).
+
+---
+
+## 6. Monetisation
+
+### 6a. Venue and brewery side (new: the main revenue engine)
+
+**Principle:** claiming and basic profiles are **free forever**. Supply first; charge for
+reach and tools.
+
+| Product | For | What they get | Price idea |
+| --- | --- | --- | --- |
+| **Venue Pro** | Pubs, bars, taprooms | Featured photos, events and sport listings with "promoted" styling, tap-list tools (board scan), offers, analytics (views, crawl adds, direction taps by day), respond to reviews | £15–£30/month per venue; discounts for groups |
+| **Local sponsored placement** | Venues | A clearly labelled **Sponsored** slot at the top of an area's results, near-me results and fixture listings for **one postcode district** (e.g. RG1), at most 1–2 per district, and only when the venue matches the user's filters | Fixed monthly price per district (e.g. £20–£80 by demand) or a monthly bid; start with fixed |
+| **Brewery tier** | Breweries | Beer catalogue tools, "where to find our beer" stock locator, taproom profile, events, data on where their beers are checked in | £20–£50/month |
+| **Event / crawl partnerships** | Breweries, BIDs, tourism boards, festivals | Branded official trails (section 6b, option 3) | Per-campaign fee |
+
+**Targeting by location without tracking people:** show sponsored venues for the **area being
+viewed or searched** (contextual), or the user's location only when they've tapped "near
+me". Cloudflare also gives an approximate city and postcode district per request
+(`request.cf`), which we can use transiently without storing it. That avoids profiling and
+cookies, and so avoids extra consent banners. **Don't build ad-style tracking.**
+
+**Rules for anything promoted:** always labelled "Sponsored" (CAP Code and CMA guidance);
+alcohol promotions must not encourage excessive or irresponsible drinking (Licensing Act
+2003 mandatory conditions; Scotland and Wales have extra pricing and promotion rules); no
+appeal to under-18s. Offers like "10% off food for Pint Route users" are lower risk than
+alcohol discounts. **Solicitor review before launch.**
+
+**Billing:** Stripe Billing (subscriptions, invoices, VAT via Stripe Tax), self-serve
+upgrade/downgrade/cancel, B2B **Business Terms** with fair cancellation terms. Card data stays
+with Stripe.
+
+### 6b. Crawl-side ideas (from earlier planning)
+
+#### Principles
+
+- **Free core forever:** creating, sharing, walking and ticking off crawls. That's the growth
+  engine, because every shared link is free marketing.
+- **Charge for things groups value on the night**, not for basics.
+- **Never sell personal data.** Aggregated, anonymous insights only.
+- **Alcohol marketing is regulated.** In the UK, the **CAP Code section 18** (ASA) covers alcohol
+  ads, and the **Licensing Act 2003 mandatory conditions** ban irresponsible promotions such as
+  "drink as much as you can" deals or drinking games. Nothing we sell or promote may encourage
+  excessive or underage drinking. Get **solicitor review** before launching paid promotions or
+  venue deals.
+- **Google Maps Platform costs grow with use** (Places details with opening hours are the most
+  expensive call). Revenue has to cover API costs per active crawl, so watch the Google Cloud
+  billing dashboard and `/stats`.
+
+#### Options, in recommended order
+
+**1. "Party Pack": a one-off upgrade per crawl (best first step)**
+Pub crawls are occasional, so a **per-event purchase (≈ £3.99–£6.99)** suits them better than
+a subscription. It suits stag and hen dos, birthdays and work socials. It could unlock:
+- **RSVPs and a group list:** who's coming, and who's joining at which pub
+- **Live group locations:** opt-in, for the night only, then auto-deleted
+- **A kitty and bill-splitting tracker:** who bought which round
+- **Fun extras:** custom crawl themes, a printable or shareable "crawl card" image, a dress code,
+  forfeits and challenges (kept responsible, with no drinking games)
+- **Photos per stop and an after-party recap page**
+
+On iOS, unlocking digital features inside the app generally has to use Apple's in-app purchase
+(15–30% fee). Selling the pack on the website (Stripe) and honouring it in the app is cheaper,
+but check Apple's current rules for the UK/EU at the time.
+
+**2. Venue partnerships (once there's traffic)**
+- **"Featured" placement** in search results, always clearly labelled *Sponsored*, and only for
+  venues that match the search anyway
+- **Venue profiles and deals:** e.g. "10% off food for Pint Route groups", or "reserved area
+  for groups of 8+"
+- **Group booking requests** passed to the venue, possibly with a booking fee or commission
+- **Pricing:** a flat monthly fee per venue (≈ £15–£50), or per redeemed deal
+
+Google's terms: our sponsored content must be clearly separate from Google-sourced data. We
+can't modify or present Places data as our own endorsement.
+
+**3. Branded and official trails (B2B)**
+- **Breweries and pub groups:** "The official Northern Monk taproom trail", or a branded crawl
+  for a pub group's estate
+- **Tourism boards, BIDs (Business Improvement Districts) and festivals:** curated "heritage pub
+  trails", CAMRA-style ale trails, and beer festival maps
+- **Corporate socials and event organisers:** private branded crawls for team events
+- **Pricing:** setup fee plus annual licence. A few contracts can outweigh lots of small
+  consumer payments.
+
+**4. Affiliate links (easy, low effort)**
+- **Getting home safely:** taxi or ride-hailing referral links at the last stop. This is
+  revenue that's also good for responsible drinking.
+- **Trains and hotels** for crawls in another city
+- **Brewery tours and experiences** (e.g. GetYourGuide/Viator affiliate programmes)
+
+**5. Merch (fun, good margins)**
+- **Print-on-demand t-shirts** for stags, hens and birthdays, printed with the crawl's name and
+  route (Printful/Printify, no stock to hold)
+
+**Probably not:** display ads (poor experience, low revenue at our scale, and alcohol-ad rules
+add risk), or paywalling core features.
+
+#### What to build first (when we get there)
+
+1. ~~Self-serve account deletion and data export~~ (done)
+2. Stripe on the web, with a `purchases` table and a "Party Pack" flag per crawl
+3. RSVPs and the group list (the most-wanted Party Pack feature, and useful free in a basic form)
+4. Venue "deals" (curated by us at first, not self-serve)
+
+Each needs Terms updates (payments, refunds, the 14-day cancellation right for digital content
+under the Consumer Contracts Regulations), Privacy updates (Stripe as a processor), and VAT
+registration once over the threshold. Get a solicitor to review.
+
+---
+
+## 7. Security, abuse and scraping
+
+### What's already in place
+
+HTTPS everywhere (Cloudflare); PBKDF2 password hashing; HttpOnly/Secure/SameSite cookies; session
+and reset tokens stored only as hashes; rate limits on login, Google-backed endpoints and crawl
+creation; email verification before sharing; links blocked in names/notes; unguessable crawl
+links; secrets in Cloudflare (never in git); restricted Google keys; budget visibility on `/stats`.
+
+### Phase 0 hardening (do before venues and business accounts)
+
+- **Security headers** from the Worker: Content-Security-Policy (only our scripts plus Google
+  Maps and CookieYes), HSTS, `X-Content-Type-Options`, `Referrer-Policy`,
+  `Permissions-Policy`, `frame-ancestors 'none'` (stops clickjacking).
+- **CSRF:** reject state-changing API requests whose `Origin` isn't pintroute.com (on top of
+  SameSite cookies).
+- **Cloudflare dashboard:** turn on the **WAF managed rules**, **Bot Fight Mode** and
+  **Turnstile** (Cloudflare's privacy-friendly CAPTCHA) on sign-up, claim, report and review
+  forms. Add edge rate-limiting rules as well as the Worker ones. Turnstile is a new
+  processor, so the cookie/Privacy pages need checking.
+- **Admin roles in the database** instead of the `ADMIN_EMAILS` secret, with every admin action
+  written to an audit log.
+- **2-factor sign-in** (passkeys or an authenticator app): optional for everyone, **required
+  for business and admin accounts**. Also a "log out of all devices" button and a list of
+  active sessions.
+- **Automated tests and CI:** there are none yet. Add API tests (accounts, permissions,
+  visibility rules) and run type-check, build and tests on every push *before* Cloudflare
+  deploys. This is the biggest current risk as the codebase grows.
+- **Dependency updates:** Dependabot (or Renovate) and `npm audit` in CI.
+- **Error monitoring:** Workers Logs alerts first. If we add Sentry or similar later, it's a
+  processor, so scrub personal data from it.
+- **Backups:** D1 Time Travel gives 30 days of point-in-time recovery. Also a weekly export to
+  R2 and a tested restore.
+
+### Stopping people scraping our data
+
+You can't stop a determined scraper of *public* pages, but you can make it slow, expensive and
+not worth it:
+- **Only our own data is worth scraping** (features, tap lists, prices, claims). Google data is
+  never stored, so there's nothing of Google's to steal.
+- **No bulk endpoints:** lists are paginated with small pages and capped page numbers, venue and
+  crawl IDs are unguessable slugs (not 1, 2, 3…), and there's no "export everything" API.
+- **Per-IP and per-account rate limits** on directory and search endpoints, tighter for
+  logged-out users. Unusual patterns (walking every area page) get a Turnstile challenge.
+- **Bot management:** Cloudflare's verified-bot list lets real search engines through and
+  blocks or challenges the rest. `robots.txt` sets the rules for well-behaved crawlers.
+- **The Terms already forbid scraping**, which gives us a legal route against commercial
+  copying. A few harmless **"canary" records** (fake features/prices visible only to bulk
+  scrapers) help prove copying if it happens.
+- Keep the most valuable data (fresh tap lists and prices) **partly behind login** for bulk use:
+  logged-out visitors see the venue, while lists across many venues need an account.
+
+### Business-account specifics
+
+Verification documents are deleted as soon as they're checked. Owners can only edit venues
+they're verified for (checked server-side on every request). Uploads are size- and
+type-checked, re-encoded (e.g. Cloudflare Images), stripped of location metadata and
+moderated. Payments go through Stripe, so card data never touches us.
+
+### If something goes wrong
+
+Write a one-page **incident plan**: who to contact, how to rotate keys (Google, Resend,
+Stripe, session secret), how to force everyone to log out (clear `sessions`), and the
+**ICO's 72-hour breach-reporting rule** for breaches that risk people's rights. Consider
+**cyber insurance** once money is involved. Have an independent **penetration test** before
+launching payments.
+
+---
+
+## 8. Legal, compliance and running a business
+
+As each phase ships, the `CLAUDE.md` legal-pages rule applies. On top of that:
+
+- **Business Terms (B2B):** separate from the consumer Terms. Claiming rules, accuracy of
+  venue content, the licence to display their content and photos, sport subscription
+  responsibility, subscription and cancellation terms, liability caps. **Solicitor review.**
+- **Privacy:** new data for business users (names, roles, phone and email, verification
+  records), check-ins and friends (social data), reviews and photos, crowd reports, and new
+  processors (phone verification, AI board reading, Stripe, image moderation, possibly
+  Turnstile). Check-in locations and friend activity must be private by default.
+- **Reviews:** DMCC Act 2024 fake-review duties (section 5), plus a published review policy.
+- **Advertising and promotions:** CAP Code section 18 (alcohol), always label "Sponsored",
+  Licensing Act mandatory conditions, Scotland and Wales rules. Never target or appeal to
+  under-18s.
+- **Data sources:** keep attribution for the Open Government Licence (FSA data) and Google;
+  handle OpenStreetMap's share-alike rule properly if used; get legal advice on football
+  fixture data.
+- **Online Safety Act 2023:** user-to-user features (reviews, photos, comments) may bring
+  Ofcom duties (risk assessments, reporting tools, illegal-content handling). Small services
+  have lighter duties, but **do the risk assessment** before launching reviews or photos.
+- **Accessibility:** keep the site usable with screen readers and keyboards (Equality Act).
+  Venue access features help here too.
+- **Company and admin:** consider trading as a **limited company** before taking money from
+  venues (limits personal liability). Also **public liability, professional indemnity and
+  cyber insurance**, **register the "Pint Route" trademark** (UKIPO, classes 9/35/42/43),
+  check the **ICO fee tier** as turnover or staff grow, and **VAT** registration over the
+  threshold.
+
+---
+
+## 9. Phone apps (iOS and Android)
+
+_Planned for after the venue platform is working (phase 7)._
 
 ### Recommended path
 
@@ -87,86 +537,7 @@ store-specific terms (Apple's standard EULA, or our Terms adapted).
 
 ---
 
-## 2. Monetisation
-
-### Principles
-
-- **Free core forever:** creating, sharing, walking and ticking off crawls. That's the growth
-  engine, because every shared link is free marketing.
-- **Charge for things groups value on the night**, not for basics.
-- **Never sell personal data.** Aggregated, anonymous insights only.
-- **Alcohol marketing is regulated.** In the UK, the **CAP Code section 18** (ASA) covers alcohol
-  ads, and the **Licensing Act 2003 mandatory conditions** ban irresponsible promotions such as
-  "drink as much as you can" deals or drinking games. Nothing we sell or promote may encourage
-  excessive or underage drinking. Get **solicitor review** before launching paid promotions or
-  venue deals.
-- **Google Maps Platform costs grow with use** (Places details with opening hours are the most
-  expensive call). Revenue has to cover API costs per active crawl, so watch the Google Cloud
-  billing dashboard and `/stats`.
-
-### Options, in recommended order
-
-**1. "Party Pack": a one-off upgrade per crawl (best first step)**
-Pub crawls are occasional, so a **per-event purchase (≈ £3.99–£6.99)** suits them better than
-a subscription. It suits stag and hen dos, birthdays and work socials. It could unlock:
-- **RSVPs and a group list:** who's coming, and who's joining at which pub
-- **Live group locations:** opt-in, for the night only, then auto-deleted
-- **A kitty and bill-splitting tracker:** who bought which round
-- **Fun extras:** custom crawl themes, a printable or shareable "crawl card" image, a dress code,
-  forfeits and challenges (kept responsible, with no drinking games)
-- **Photos per stop and an after-party recap page**
-
-On iOS, unlocking digital features inside the app generally has to use Apple's in-app purchase
-(15–30% fee). Selling the pack on the website (Stripe) and honouring it in the app is cheaper,
-but check Apple's current rules for the UK/EU at the time.
-
-**2. Venue partnerships (once there's traffic)**
-- **"Featured" placement** in search results, always clearly labelled *Sponsored*, and only for
-  venues that match the search anyway
-- **Venue profiles and deals:** e.g. "10% off food for Pint Route groups", or "reserved area
-  for groups of 8+"
-- **Group booking requests** passed to the venue, possibly with a booking fee or commission
-- **Pricing:** a flat monthly fee per venue (≈ £15–£50), or per redeemed deal
-
-Google's terms: our sponsored content must be clearly separate from Google-sourced data. We
-can't modify or present Places data as our own endorsement.
-
-**3. Branded and official trails (B2B)**
-- **Breweries and pub groups:** "The official Northern Monk taproom trail", or a branded crawl
-  for a pub group's estate
-- **Tourism boards, BIDs (Business Improvement Districts) and festivals:** curated "heritage pub
-  trails", CAMRA-style ale trails, and beer festival maps
-- **Corporate socials and event organisers:** private branded crawls for team events
-- **Pricing:** setup fee plus annual licence. A few contracts can outweigh lots of small
-  consumer payments.
-
-**4. Affiliate links (easy, low effort)**
-- **Getting home safely:** taxi or ride-hailing referral links at the last stop. This is
-  revenue that's also good for responsible drinking.
-- **Trains and hotels** for crawls in another city
-- **Brewery tours and experiences** (e.g. GetYourGuide/Viator affiliate programmes)
-
-**5. Merch (fun, good margins)**
-- **Print-on-demand t-shirts** for stags, hens and birthdays, printed with the crawl's name and
-  route (Printful/Printify, no stock to hold)
-
-**Probably not:** display ads (poor experience, low revenue at our scale, and alcohol-ad rules
-add risk), or paywalling core features.
-
-### What to build first (when we get there)
-
-1. ~~Self-serve account deletion and data export~~ (done)
-2. Stripe on the web, with a `purchases` table and a "Party Pack" flag per crawl
-3. RSVPs and the group list (the most-wanted Party Pack feature, and useful free in a basic form)
-4. Venue "deals" (curated by us at first, not self-serve)
-
-Each needs Terms updates (payments, refunds, the 14-day cancellation right for digital content
-under the Consumer Contracts Regulations), Privacy updates (Stripe as a processor), and VAT
-registration once over the threshold. Get a solicitor to review.
-
----
-
-## 3. Backlog (smaller items)
+## 10. Backlog (smaller items)
 
 - [x] **Self-serve account deletion and data export** (done: My account)
 - [x] **Change email and password** while logged in (done: My account)
