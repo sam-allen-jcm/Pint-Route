@@ -34,19 +34,19 @@ with whom?* Answer that well on a phone in under 10 seconds and the rest follows
 | **6b. Commercial accounts** | Organisations and estates, roles, bulk site claims, split control for tenanted pubs, estate dashboard, contracts, campaigns, internal commercial admin (section 2b) | 5–7 weeks | 2, 6 |
 | **7. Apps** | PWA, then App Store / Google Play (section 10) | see section 10 | ideally after 3 |
 
-**Decisions needed from the owner** (each is discussed in the section shown):
+**Owner's decisions** (made 17 November 2026; the section shown has the detail):
 
-1. **UK only at first?** Recommended: yes. Our open data, licensing law and sport channels are all UK-specific (section 1).
-2. **Build our own venue database from open data** (Food Standards Agency, optionally OpenStreetMap) and link it to Google, rather than relying on Google alone? Recommended: yes (section 1).
-3. **How claimants are verified:** phone-call code to the venue's listed number, plus Google Business Profile sign-in, with manual review as a fallback? (section 2)
-4. **Prices:** crowd-reported "price of a pint" with dates, owners optional? (section 4)
-5. **Sport fixtures:** pay for a licensed fixtures feed, or let pubs type in what they're showing? (section 3)
-6. ~~Written reviews of pubs?~~ **Decided:** no free text; a structured, type-aware rating system instead (section 5).
-7. **Business set-up:** stay as SA Consulting, or form a limited company before taking money from venues? (section 9)
-8. **Friends model:** mutual friends (request and accept, recommended) or one-way following like Instagram? (section 6)
-9. **Direct messages:** leave them out and link to WhatsApp instead (recommended), or build chat? (section 6)
-10. **Tenanted and leased pubs in big estates:** split control between the pub company and the tenant (recommended), or give whoever signs up first full control? (section 2b)
-11. **Visit tracking:** start counting anonymous tick-offs per venue now, and add the opt-in location check with crews (recommended)? (section 6, "Verified visits")
+1. **UK only at first** for the directory, claiming, features, ratings and money. Crawl planning stays worldwide (section 1).
+2. **Our own venue database** from Food Standards Agency open data, linked to Google for live hours and photos. No OpenStreetMap for now (section 1).
+3. **Claim checks:** phone code to the venue's listed number, **Google Business Profile sign-in**, and a **posted letter with a unique code** (like Google Business Profile). Manual review only for disputes (section 2).
+4. **Prices:** reported by visitors after a visit, with pubs adding their own optionally; shown with dates and a £/££/£££ band (section 4).
+5. **Sport fixtures:** pubs type in what they're showing at launch; buy a licensed fixtures feed (with legal advice) once there's traffic (section 3).
+6. **Reviews:** no free text; the structured, type-aware rating system (section 5).
+7. **Company:** stay as SA Consulting for now; set up a **limited company before the first paid venue or deal**, then switch the operator on the legal pages (section 9).
+8. **Friends:** mutual (request and accept), no one-way following (section 6).
+9. **Messaging:** no in-app chat; crews get RSVPs, progress and notifications, plus "share to WhatsApp" (section 6).
+10. **Tenanted / leased pubs:** split control between the pub company and the tenant, with legal advice on the Pubs Code before launch (section 2b).
+11. **Visits:** start an anonymous daily count of tick-offs per venue **now**; add the opt-in location check later with crews; update the Privacy Policy before pubs can see any of it (section 6).
 
 ---
 
@@ -120,8 +120,9 @@ No single method is perfect, so we offer tiers, quickest first:
 | **Postcard to the venue address** | Code posted to the premises | Strong but slow (3–5 days) | ~£1 per postcard (print-and-post API) |
 | **Manual review** | Upload a **premises licence** (the licence holder and DPS appear on the council's public register) or a recent business bill; we check by hand and delete the document afterwards | Strong if done carefully | Our time |
 
-**Recommended:** phone code + Google sign-in as the automatic routes, manual review as the
-fallback. Rules:
+**Decided:** phone code, Google Business Profile sign-in and a **posted letter with a code**
+(for venues without a working phone line or Google listing access). Manual review is kept only for
+disputes, e.g. two people claiming the same pub, or a change of tenant. Rules:
 - One **owner** per venue, who can invite **managers/staff** (roles).
 - **Pub groups** (e.g. a managed estate) get a multi-venue account. Verify the company once,
   then add sites.
