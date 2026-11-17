@@ -31,6 +31,7 @@ with whom?* Answer that well on a phone in under 10 seconds and the rest follows
 | **5. Ratings** | Structured ratings and the type-aware Pint Route Score (section 5) | 3–4 weeks | 1 (3 for venue types) |
 | **5b. Social community** | Friends, crews on crawls (RSVP, shared progress, everyone rates), local feed, pub events, notifications, badges (section 6) | 5–7 weeks | 5; events need 2 |
 | **6. Money** | Venue Pro subscription, local sponsored placement, brewery tier, Stripe billing | 3–4 weeks | 2 (+ traffic) |
+| **6b. Commercial accounts** | Organisations and estates, roles, bulk site claims, split control for tenanted pubs, estate dashboard, contracts, campaigns, internal commercial admin (section 2b) | 5–7 weeks | 2, 6 |
 | **7. Apps** | PWA, then App Store / Google Play (section 10) | see section 10 | ideally after 3 |
 
 **Decisions needed from the owner** (each is discussed in the section shown):
@@ -44,6 +45,7 @@ with whom?* Answer that well on a phone in under 10 seconds and the rest follows
 7. **Business set-up:** stay as SA Consulting, or form a limited company before taking money from venues? (section 9)
 8. **Friends model:** mutual friends (request and accept, recommended) or one-way following like Instagram? (section 6)
 9. **Direct messages:** leave them out and link to WhatsApp instead (recommended), or build chat? (section 6)
+10. **Tenanted and leased pubs in big estates:** split control between the pub company and the tenant (recommended), or give whoever signs up first full control? (section 2b)
 
 ---
 
@@ -135,6 +137,118 @@ Edit description, hours overrides, features, food times, links (menu, booking, s
 (upload with moderation), events, and later tap list and sport. Basic stats: profile views,
 times added to crawls, direction taps. All free, because claimed profiles are what make
 the directory good.
+
+---
+
+## 2b. Commercial accounts: pub groups, breweries and deals
+
+Single pubs claim one venue (section 2). **Pub companies and brewery estates** (from 5 sites to
+2,000+) need to manage many listings at once, and they're where the bigger commercial deals
+are. Two halves: the **customer side** (their estate dashboard) and **our side** (managing
+accounts, contracts and campaigns).
+
+### Organisations, estates and roles
+
+- **Organisation** (e.g. a brewery or pub company), with **regions/areas**, then **venues**.
+  One login can belong to several organisations (e.g. a consultant).
+- **Roles:** org admin, finance/billing, marketing, area manager (their region only), venue
+  manager, staff. Permissions are checked server-side for every edit. Every change goes in the
+  audit log, and 2-factor sign-in is required (section 8).
+- **Brand / estate page** `/b/<brand>`: "Our pubs", "Where to find our beers", brand-wide
+  events and offers. The brand page is theirs; individual venue pages stay venue-first.
+
+### Verifying an organisation (once), then adding sites
+
+- Verify the **company**: a **Companies House** check (company number, registered office,
+  active status, named directors), plus a **work-email domain** check and a signed order form
+  for larger accounts.
+- **Add sites in bulk:** upload a list or CSV of site names/addresses (or their estate IDs). We
+  match them to our venue table, the organisation confirms the matches, and any venue already
+  claimed by someone else goes to review instead of being taken over.
+- **Spot checks:** a sample of sites is verified (e.g. the phone-code method) before a large
+  estate goes live, so a bad actor can't claim a rival's estate.
+
+### Managed, tenanted and franchised pubs (important)
+
+Large estates mix **managed** pubs (run by the company), **tenanted / leased** pubs (run by an
+independent tenant, often *tied* to buying the company's beer) and **franchises**. Who
+controls the listing must reflect that:
+- **Managed:** the organisation controls everything.
+- **Tenanted / leased / franchise:** **split control**. The organisation can manage brand
+  elements, the core beer range and estate-wide campaigns. The **tenant** (verified separately,
+  as in section 2) controls hours, events, food, features, photos and their own extras.
+  Either side can see who changed what.
+- **Pubs Code:** in England and Wales, large pub-owning businesses (500+ tied pubs) are
+  regulated by the **Pubs Code** and the Pubs Code Adjudicator in their dealings with tied
+  tenants. Our tools must never let a pub company quietly override or take over a tenant's
+  listing, and tenants keep their own access. **Legal advice** before launching tenanted-estate
+  features.
+
+### Estate tools
+
+- **Bulk editing:** set a feature, event, offer or beer across many venues at once ("all
+  Northern sites show TNT Sports"), with per-venue overrides.
+- **Templates:** brand descriptions, photo sets and event templates (e.g. a quiz format
+  across the estate).
+- **Beer range and "where to find our beer":** breweries push their core range to their own
+  estate, and record **free trade** accounts (pubs they supply but don't own), which feeds
+  the beer pages in section 4.
+- **Estate dashboard:** views, crawl adds, direction taps and rating trends per venue, region
+  and brand; benchmarks against similar venues (anonymised); alerts such as "Your Leeds site's
+  hospitality score dropped this month" or "3 sites have stale tap lists". Exports to CSV.
+- **API and integrations (later):** a rate-limited partner API with keys per organisation for
+  syncing hours, events and tap lists from their own systems (EPOS, CMS). Also single sign-on
+  (Microsoft/Google Workspace SSO) for big groups.
+
+### Commercial deals
+
+Large accounts won't buy through a self-serve checkout:
+- **Contracts:** custom pricing per account (per-site rate with volume tiers), term (12/24
+  months), start and renewal dates, notice periods, included products (Pro for every site,
+  N sponsored districts, campaign credits), purchase-order numbers and invoicing (monthly,
+  quarterly or annual, on bank transfer terms). Stripe Invoicing handles invoices, VAT and
+  reminders; card payments stay optional.
+- **Campaigns:** "Official [Brewery] Trail" (branded public crawls, section 7b), estate-wide
+  promoted events (e.g. a beer festival across 40 sites), tap-takeover promotions, sponsored
+  slots in chosen districts, and sponsored fixtures (e.g. "Watch the Six Nations at a
+  [Brand] pub"). All clearly labelled **Sponsored**, with no influence on scores (section 5).
+- **Proof of performance:** each campaign gets a report showing impressions, profile views,
+  direction taps, crawl adds and event "going" counts. **Aggregated, never personal data**
+  about users.
+- **Data insights products (later):** anonymised, aggregated trends ("craft demand rising in
+  RG1", "average pint price by town"). Only aggregated data with minimum group sizes, so no
+  individual can be identified, and covered in the Privacy Policy before launch.
+
+### Our side: commercial management (internal admin)
+
+An admin area for the Pint Route team (admin roles, audit-logged, 2FA):
+- **Accounts and contacts:** organisations, their sites, key contacts, notes, account owner.
+- **Deals pipeline:** lead → proposal → contract → live → renewal, with values and dates (a
+  simple built-in CRM to start; integrate with HubSpot or similar if it outgrows that, which
+  would be a new processor).
+- **Contracts:** pricing, term, included products, renewal reminders, signed documents.
+- **Inventory:** which **sponsored districts and campaign slots** are sold, free or on hold,
+  and when they end, so we never oversell an area.
+- **Campaign scheduling** and the client report generator.
+- **Billing overview:** invoices, overdue payments, revenue by product and region.
+
+### Legal for commercial accounts
+
+**Master Services Agreement** plus **order forms** (B2B terms: content licence, acceptable use,
+sponsored content rules, liability caps, payment terms, termination, Pubs Code respect).
+Advertising rules (CAP Code section 18, "Sponsored" labels). Late payment terms. Privacy for
+business contacts (names, emails, roles: we're the controller, lawful basis is the contract or
+legitimate interests). If they send us their staff's personal data via the API, a **data
+processing addendum** may be needed. **Solicitor review** before the first enterprise deal.
+
+### Data model (sketch)
+
+`organisations` (name, company number, verified, type: brewery/pubco/group), `org_members`
+(org, user, role, region scope), `org_regions`, `org_venues` (org, venue, relationship:
+managed/tenanted/leased/franchise/free-trade, control split), `contracts` (org, products,
+pricing, term, renewal, status), `campaigns` (contract, type, districts/venues, dates,
+status), `sponsored_inventory` (district, slot, campaign, starts/ends), `invoices` (Stripe
+ids), `audit_log` (actor, org, venue, change, at).
 
 ---
 
