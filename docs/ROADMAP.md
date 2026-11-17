@@ -24,7 +24,7 @@ with whom?* Answer that well on a phone in under 10 seconds and the rest follows
 | Phase | What | Rough size | Depends on |
 | --- | --- | --- | --- |
 | **0. Foundations** | Security hardening, automated tests and CI, admin roles, our own `venues` table seeded from open data, start counting anonymous daily visits per venue | 2–3 weeks | – |
-| **1. Venue directory** | Search pubs/breweries/taprooms, venue profile pages, "all pubs in an area" pages, filters | 3–4 weeks | 0 |
+| **1. Venue directory** | **First version built (17 Nov 2026):** FSA import, search, near me, area pages, pub pages linked to Google, add to a crawl. Still to do: feature filters (needs 3), SEO pages, breweries (FSA lists them under other types) | 3–4 weeks | 0 |
 | **2. For Businesses** | Claim a venue, verify the claimant, owner dashboard, edit profile, Business Terms | 3–4 weeks | 1 |
 | **3. Features and sport** | Structured features (pool, darts, Sky/TNT, garden, dogs…), crowd-confirmed; "showing the match" listings | 3–4 weeks | 1 (2 for owner edits) |
 | **4. Beer** | Breweries and beer catalogue, tap lists with freshness, snap-the-board photo import, crowd pint prices | 4–6 weeks | 2 |

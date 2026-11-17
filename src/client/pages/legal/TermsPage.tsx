@@ -15,8 +15,8 @@ export function TermsPage() {
 
       <h2>1. Who can use Pint Route</h2>
       <p>
-        You must be <strong>of legal drinking age in the country where you live</strong> (18 in the UK) to use{" "}
-        {service}. By using it, you confirm that you are.
+        You must be <strong>of legal drinking age in the country where you live</strong> (18 in the UK) to use {service}
+        . By using it, you confirm that you are.
       </p>
 
       <h2>2. What Pint Route is (and isn't)</h2>
@@ -26,8 +26,22 @@ export function TermsPage() {
         the venues you choose or what happens at them.
       </p>
       <p>
-        Venue information (names, addresses, opening hours, whether a venue is open, photos) comes from Google and
-        other sources, and may be out of date or wrong. Always check with the venue before relying on it.
+        Venue information (names, addresses, opening hours, whether a venue is open, photos) comes from Google and other
+        sources, and may be out of date or wrong. Always check with the venue before relying on it.
+      </p>
+      <p>
+        Our pub directory lists venues from the Food Standards Agency's food hygiene rating data, which contains public
+        sector information licensed under the{" "}
+        <a
+          href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Open Government Licence v3.0
+        </a>
+        , including each venue's food hygiene rating. How we describe a venue (for example "pub", "bar" or "club") is
+        our best guess and may be wrong. A listing doesn't mean the venue endorses {service}, or that we endorse it. If
+        a listing is wrong, tell us at <LegalEmail email={email} />.
       </p>
 
       <h2>3. Drink responsibly and stay safe</h2>
@@ -42,11 +56,10 @@ export function TermsPage() {
         </li>
         <li>Venues can refuse entry or service, and may ask for ID.</li>
         <li>
-          Walking routes, times and distances, and estimated arrival times (and whether a venue will be open
-          then), are <strong>estimates only</strong>. For stops very close together, we
-          may show a direct line instead of the official route. Routes may not reflect road conditions, closures,
-          accessibility or safety. Use your own judgement, follow the law and road signs, and{" "}
-          <strong>use proper crossings</strong>.
+          Walking routes, times and distances, and estimated arrival times (and whether a venue will be open then), are{" "}
+          <strong>estimates only</strong>. For stops very close together, we may show a direct line instead of the
+          official route. Routes may not reflect road conditions, closures, accessibility or safety. Use your own
+          judgement, follow the law and road signs, and <strong>use proper crossings</strong>.
         </li>
         <li>Plan how you'll get home safely before you set out.</li>
       </ul>
@@ -91,8 +104,8 @@ export function TermsPage() {
       <ul>
         <li>
           Crawls are private unless you choose to <strong>make one public</strong>. A public crawl is listed in the
-          Community area, where anyone (with or without an account) can see its name, town, meeting point and pubs,
-          with your username. Your notes and ticked-off pubs aren't shown to people who can't edit it. You can make it
+          Community area, where anyone (with or without an account) can see its name, town, meeting point and pubs, with
+          your username. Your notes and ticked-off pubs aren't shown to people who can't edit it. You can make it
           private again at any time.
         </li>
         <li>
@@ -101,11 +114,10 @@ export function TermsPage() {
           them and aren't affected if you later change, make private or delete your crawl, or delete your account.
         </li>
         <li>
-          Logged-in users with a confirmed email can give a public crawl a <strong>1 to 5 star rating</strong>, one
-          per account, and change or remove it. You can rate your own crawls too; when the creator has, the crawl's
-          page says the average includes their rating. Rate honestly: don't use extra
-          accounts, swap ratings or pay or ask others to rate, to push a crawl up or down. Ratings are people's
-          opinions, not ours.
+          Logged-in users with a confirmed email can give a public crawl a <strong>1 to 5 star rating</strong>, one per
+          account, and change or remove it. You can rate your own crawls too; when the creator has, the crawl's page
+          says the average includes their rating. Rate honestly: don't use extra accounts, swap ratings or pay or ask
+          others to rate, to push a crawl up or down. Ratings are people's opinions, not ours.
         </li>
         <li>
           We decide what appears in the Community and how it's ordered. We may remove a crawl from the Community, or
@@ -113,8 +125,8 @@ export function TermsPage() {
           a crawl, public or shared with you, use its Report link or email <LegalEmail email={email} />.
         </li>
         <li>
-          Pubs on public crawls are suggestions from other users. We don't check or endorse them, and their details
-          come from Google Maps.
+          Pubs on public crawls are suggestions from other users. We don't check or endorse them, and their details come
+          from Google Maps.
         </li>
       </ul>
 
@@ -160,8 +172,8 @@ export function TermsPage() {
         We'll try to give reasonable notice of significant changes where we can.
       </p>
       <p>
-        The {service} name, design and software belong to us or our licensors. Apart from using the service as
-        intended, these terms don't give you any rights in them.
+        The {service} name, design and software belong to us or our licensors. Apart from using the service as intended,
+        these terms don't give you any rights in them.
       </p>
 
       <h2>9. Our responsibility to you</h2>
@@ -185,15 +197,14 @@ export function TermsPage() {
           reasonable care and skill. The service is for domestic and private use, so we're not liable for business
           losses.
         </li>
-        <li>
-          Because the service is free, our total liability to you for any claim is limited to £100.
-        </li>
+        <li>Because the service is free, our total liability to you for any claim is limited to £100.</li>
       </ul>
 
       <h2>10. Suspending or ending your use</h2>
       <p>
-        You can stop using {service} at any time, and delete your account from My account. We may suspend or close an account, or remove crawls, if we
-        reasonably believe these terms have been broken, or to protect the service, its users or others.
+        You can stop using {service} at any time, and delete your account from My account. We may suspend or close an
+        account, or remove crawls, if we reasonably believe these terms have been broken, or to protect the service, its
+        users or others.
       </p>
 
       <h2>11. Changes to these terms</h2>

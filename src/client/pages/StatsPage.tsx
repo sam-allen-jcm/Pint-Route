@@ -47,6 +47,11 @@ const EVENT_LABELS: Record<string, string> = {
   signup: "Sign-up",
   signup_total: "New accounts",
   login: "Log in",
+  venue_search: "Pub search (typed)",
+  venue_search_near_me: "Pub search (near me)",
+  venue_area_viewed: "Area page viewed",
+  venue_viewed: "Pub page viewed",
+  venues_imported: "Council area imported",
   email_verified: "Email confirmed",
   crawl_published: "Crawl made public",
   crawl_unpublished: "Crawl made private",
@@ -114,6 +119,9 @@ export function StatsPage() {
           🍺 Pint Route
         </Link>
         <h1>Usage stats</h1>
+        <p className="small">
+          <Link to="/admin/venues">Pub database (import from the Food Standards Agency) ›</Link>
+        </p>
         <p className="muted small">
           Anonymous counts of what people do in the app. Visitors, page views and traffic sources are in{" "}
           <a href="https://dash.cloudflare.com/?to=/:account/web-analytics" target="_blank" rel="noreferrer">

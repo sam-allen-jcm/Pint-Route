@@ -28,6 +28,7 @@ export function HomePage() {
   const [error, setError] = useState<string | null>(null);
   /** Logged out: after the details, ask them to sign up (or log in) to save the crawl. */
   const [step, setStep] = useState<"details" | "account">("details");
+  const [pubQuery, setPubQuery] = useState("");
   const [popular, setPopular] = useState<CommunityCrawl[] | null>(null);
   const [popularCountry, setPopularCountry] = useState<string | null>(null);
   // Crawls made as a guest before accounts were required (only kept on this device).
@@ -185,6 +186,30 @@ export function HomePage() {
           </>
         )}
       </section>
+
+      <form
+        className="card stack find-pub"
+        role="search"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (pubQuery.trim()) navigate(`/pubs?q=${encodeURIComponent(pubQuery.trim())}`);
+        }}
+      >
+        <h2>Find a pub</h2>
+        <div className="search-bar">
+          <input
+            type="search"
+            value={pubQuery}
+            onChange={(e) => setPubQuery(e.target.value)}
+            placeholder="Pub name, town or postcode"
+            aria-label="Pub name, town or postcode"
+            maxLength={80}
+          />
+          <button className="btn btn-primary" disabled={!pubQuery.trim()}>
+            Search
+          </button>
+        </div>
+      </form>
 
       {user && (
         <Link to="/account" className="crawl-link my-crawls-link">

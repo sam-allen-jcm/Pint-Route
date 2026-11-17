@@ -231,4 +231,53 @@ export interface GoogleQuotaResponse {
   requests: { service: string; method: string; count: number; errors: number }[];
 }
 
+// ---------- Venue directory ----------
+
+export type VenueKind = "pub" | "bar" | "taproom" | "nightclub" | "club";
+
+/** A venue in a list (our own data only; no Google calls). */
+export interface VenueSummary {
+  slug: string;
+  name: string;
+  kind: VenueKind;
+  town: string | null;
+  postcode: string | null;
+  location: LatLng | null;
+  /** From the searcher, when searching near a location. */
+  distanceMeters: number | null;
+}
+
+export interface VenueSearchResult {
+  venues: VenueSummary[];
+  /** Pass back as ?page= for more. Null when there are no more. */
+  nextPage: number | null;
+  /** For area pages: the area's display name, e.g. "Reading" or "RG1". */
+  areaName?: string | null;
+  /** For area pages: how many venues the area has in total. */
+  total?: number;
+}
+
+/** A venue's profile page. */
+export interface VenueDetails extends Omit<VenueSummary, "distanceMeters"> {
+  address: string;
+  outcode: string | null;
+  localAuthority: string | null;
+  /** Food hygiene rating from the Food Standards Agency (Open Government Licence). */
+  hygiene: { rating: string; date: string | null; url: string } | null;
+  /** Live from Google (hours, photo, phone…), when the venue is matched to a Google place. */
+  place: PlaceDetails | null;
+  /** Google Place ID, needed to add the venue to a crawl. */
+  placeId: string | null;
+  /** Public crawls that include this venue. */
+  publicCrawls: { slug: string; name: string; author: string }[];
+}
+
+/** Admin: a council area in the Food Standards Agency data, and our import status. */
+export interface FsaAuthority {
+  id: number;
+  name: string;
+  importedAt: string | null;
+  venueCount: number;
+}
+
 export const MAX_STOPS = 25;

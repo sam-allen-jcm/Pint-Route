@@ -33,6 +33,7 @@ import { getPhotoUri, getPlace, isPlaceId, searchPlaces, suggestCities, suggestP
 import { HttpError, json, readJson } from "./http";
 import { getStats, isAdmin, requireAdmin } from "./stats";
 import { getGoogleQuotas } from "./googleCloud";
+import { areaVenues, getVenue, importAuthority, listAuthorities, searchVenues } from "./venues";
 import { crawlPage } from "./sharePreview";
 import { CLIENT_EVENTS, recordUsage } from "./usage";
 
@@ -70,7 +71,8 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
 
   // ---- Places (live from Google, short-lived cache) ----
   // Anything that may call Google is rate-limited per IP to protect the API bill.
-  const googleBacked = path.startsWith("/api/places") || path === "/api/community" || /^\/api\/crawls\/[a-z0-9]+\/(route|stops)$/.test(path);
+  const googleBacked =
+    path.startsWith("/api/places") || path.startsWith("/api/venues") || path === "/api/community" || /^\/api\/crawls\/[a-z0-9]+\/(route|stops)$/.test(path);
   if (googleBacked && env.GOOGLE_LIMITER) {
     const ip = request.headers.get("CF-Connecting-IP") ?? "local";
     if (!(await env.GOOGLE_LIMITER.limit({ key: ip })).success) {
@@ -183,6 +185,30 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext, url:
     const res = await deleteAccount(request, env, ctx, await readJson(request));
     track("account_deleted");
     return res;
+  }
+  // ---- Venue directory ----
+  if (path === "/api/venues" && method === "GET") {
+    track(url.searchParams.has("near") ? "venue_search_near_me" : "venue_search");
+    return json(await searchVenues(env, url.searchParams), { headers: { "Cache-Control": "no-store" } });
+  }
+  if ((m = path.match(/^\/api\/venues\/area\/([^/]{1,80})$/)) && method === "GET") {
+    track("venue_area_viewed");
+    return json(await areaVenues(env, m[1], url.searchParams), { headers: { "Cache-Control": "no-store" } });
+  }
+  if ((m = path.match(/^\/api\/venues\/([a-z0-9-]{1,100})$/)) && method === "GET") {
+    track("venue_viewed");
+    return json(await getVenue(env, m[1]), { headers: { "Cache-Control": "no-store" } });
+  }
+  if (path === "/api/admin/venues/authorities" && method === "GET") {
+    await requireAdmin(request, env);
+    return json({ authorities: await listAuthorities(env) });
+  }
+  if (path === "/api/admin/venues/import" && method === "POST") {
+    await requireAdmin(request, env);
+    const body = await readJson(request);
+    const result = await importAuthority(env, Number(body.authorityId));
+    track("venues_imported");
+    return json(result);
   }
   if (path === "/api/community" && method === "GET") {
     return json(await listCommunity(env, url.searchParams), { headers: { "Cache-Control": "no-store" } });

@@ -68,6 +68,7 @@ pages and say so in your reply:
 | Sessions (SHA-256 of cookie token, expiry) | D1 `sessions`, cookie `pr_session` | 30 days / logout / password reset |
 | Password reset tokens (SHA-256, expiry) | D1 `password_resets` | 1 hour validity; deleted when used or superseded |
 | Crawls: name, Place IDs, order, visited dates, notes (only logged-in editors can write them), country code, area Place ID, meeting point Place ID, start date/time, minutes per stop, owner | D1 `crawls`, `stops` | Until deleted. An account is required to create one. Public to anyone with the share link once the owner's email is verified (before that, editors only, and link previews are generic). If the owner makes it public (`crawls.is_public`, `published_at`), it's listed in `/community` with their username; notes and visit dates are then stripped for non-editors. Others can copy the route (`copy_count`); copies are theirs. Link previews (`src/worker/sharePreview.ts`) expose the name, town, pub count and start date/time to messaging apps |
+| Venue directory (business listings, not user data): name, address, town, postcode, location, FSA id and food hygiene rating, our guessed kind, Google Place ID (linked on first view) | D1 `venues` (+ `venues_fts` search index, `fsa_imports`), imported per council area by admins at `/admin/venues` (`src/worker/venues.ts`) | Refreshed on re-import; venues gone from the FSA register are marked closed. Source: Food Standards Agency, Open Government Licence v3.0, so keep the attribution on pub pages |
 | Guest edit tokens, last country | Browser localStorage `pint-route:crawls`, `pint-route:last-country` | Until cleared |
 | Location, "near me" | Sent to Worker and Google, not stored; rounded copy cached ≤5 min | Transient |
 | Location, "Show my location" (live dot on map) | Browser only (`watchPosition`); never sent to the Worker. Google sees map tile requests for the area shown | Until switched off / page closed |
@@ -88,7 +89,8 @@ API usage and quotas from Cloud Monitoring (`src/worker/googleCloud.ts`); no use
 Google Maps terms require us to bind users to the Google Maps/Google Earth Additional Terms and
 Google Privacy Policy. Keep that section in the Terms.
 
-**Google Places terms:** store only Place IDs in D1. Names, hours, photos and locations must be
+**Google Places terms:** store only Place IDs in D1 (`venues.google_place_id` included: venue names
+and addresses there come from the FSA, never from Google). Names, hours, photos and locations must be
 fetched live, with short-lived caching only.
 
 **Anti-spam:** creating a crawl needs an account; share links and previews only work once the

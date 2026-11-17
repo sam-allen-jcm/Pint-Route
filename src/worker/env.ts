@@ -23,6 +23,8 @@ export interface Env {
   APP_URL?: string;
   /** Sender for outgoing email, e.g. "Pint Route <noreply@pintroute.com>". */
   EMAIL_FROM?: string;
+  /** Optional: base URL of the Food Standards Agency ratings API (tests point it at a local copy). */
+  FSA_API_BASE?: string;
   /** Local development only: "true" prints unsent emails to the console. */
   DEV_LOG_EMAILS?: string;
 }

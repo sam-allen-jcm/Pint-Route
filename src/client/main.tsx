@@ -9,6 +9,9 @@ import { PrivacyPage } from "./pages/legal/PrivacyPage";
 import { TermsPage } from "./pages/legal/TermsPage";
 import { ForgotPasswordPage, ResetPasswordPage } from "./pages/PasswordResetPages";
 import { AccountPage } from "./pages/AccountPage";
+import { AdminVenuesPage } from "./pages/AdminVenuesPage";
+import { VenuePage } from "./pages/VenuePage";
+import { VenueSearchPage } from "./pages/VenueSearchPage";
 import { CommunityPage } from "./pages/CommunityPage";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 import { StatsPage } from "./pages/StatsPage";
@@ -28,6 +31,10 @@ createRoot(document.getElementById("root")!).render(
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/community" element={<CommunityPage />} />
+          <Route path="/pubs" element={<VenueSearchPage />} />
+          <Route path="/pubs/:area" element={<VenueSearchPage />} />
+          <Route path="/v/:slug" element={<VenuePage />} />
+          <Route path="/admin/venues" element={<AdminVenuesPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />

@@ -111,7 +111,7 @@ function apiKey(env: Env): string {
   return env.GOOGLE_PLACES_API_KEY;
 }
 
-async function google<T>(env: Env, url: string, fieldMask: string, body?: unknown): Promise<T> {
+export async function google<T>(env: Env, url: string, fieldMask: string, body?: unknown): Promise<T> {
   const res = await fetch(url, {
     method: body === undefined ? "GET" : "POST",
     headers: {

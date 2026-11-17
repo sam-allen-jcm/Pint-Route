@@ -13,6 +13,9 @@ export function TopNav({ brand = false }: { brand?: boolean }) {
       ) : (
         <span className="nav-spacer" />
       )}
+      <NavLink to="/pubs" className="text-btn">
+        Pubs
+      </NavLink>
       <NavLink to="/community" className="text-btn">
         Community
       </NavLink>

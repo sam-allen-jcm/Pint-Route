@@ -300,6 +300,28 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 - **Moderation**: public crawls have a Report link (emails legal@pintroute.com). Accounts in
   `ADMIN_EMAILS` see an "Unpublish (admin)" button on public crawls.
 
+### Pub directory (UK)
+
+- **Data:** our own `venues` table, imported from the **Food Standards Agency** food hygiene
+  rating API (business type "Pub/bar/nightclub", Open Government Licence v3.0) one council area
+  at a time from the admin page **`/admin/venues`** (link on `/stats`). Re-importing refreshes an
+  area and marks venues that have left the register as closed. Names are tidied ("THE KINGS
+  ARMS" → "The Kings Arms"), and the kind (pub, bar, taproom, nightclub, club) is guessed from
+  the name. Members' clubs are hidden unless the "Clubs" filter is chosen.
+- **Search** (`/pubs`): name/town words (D1 FTS5, prefix matching), a postcode or postcode
+  district (`RG1`, `RG1 7XD`), or "Pubs near me" (bounding box, then exact distance). No Google
+  calls. **Area pages:** `/pubs/reading`, `/pubs/rg1`.
+- **Pub pages** (`/v/<slug>`): our data plus the FSA hygiene rating, and on first view the venue
+  is matched to Google (text search for name + postcode near its location, accepting only a
+  similarly named place within 250 m). Only the Place ID is stored; hours, photo and status are
+  fetched live. "Add to a crawl" needs that match.
+- **Write volume:** each imported venue writes several rows (the row, its indexes and the search
+  index). The whole UK is roughly 50,000–70,000 venues, which is more than the D1 **free plan's
+  100,000 rows written per day**. On the free plan, import a few areas a day; on Workers Paid
+  it's fine.
+- **Local testing:** set `FSA_API_BASE` in `.dev.vars` to point the import at a local copy of
+  the API.
+
 ### On the night
 
 - **Directions:** every walk between stops has a "Directions ↗" link to Google Maps walking
@@ -350,6 +372,11 @@ for Workers Builds normally includes it. If you use a custom token, add *Account
 | `GET /api/me/export` | session | Download of all the account's data (JSON) |
 | `POST /api/me/delete` | session | `{ password }`, deletes the account and everything in it |
 | `GET /api/community?sort=top\|new&country=&q=&page=` | – | Public crawls |
+| `GET /api/venues?q=\|near=lat,lng&kind=&page=` | – | Search the pub directory (our data only) |
+| `GET /api/venues/area/:area?kind=&page=` | – | Every venue in a town, council area or postcode district |
+| `GET /api/venues/:slug` | – | A pub's page: our data, hygiene rating, live Google details once matched, public crawls including it |
+| `GET /api/admin/venues/authorities` | admin | FSA council areas with our import status |
+| `POST /api/admin/venues/import` | admin | `{ authorityId }` imports or refreshes that area |
 | `PUT /api/crawls/:slug/public` | owner (admin may unpublish) | `{ isPublic }` |
 | `POST /api/crawls/:slug/copy` | session | Copies a public crawl's route into the user's account |
 | `PUT /api/crawls/:slug/rating` | session, confirmed | `{ stars: 1-5 \| null }` |

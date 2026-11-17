@@ -5,6 +5,9 @@ import type {
   CitySuggestion,
   CommunityPage,
   CrawlRating,
+  FsaAuthority,
+  VenueDetails,
+  VenueSearchResult,
   CrawlSummary,
   CreatedCrawl,
   LatLng,
@@ -110,6 +113,33 @@ export const api = {
   },
   deleteAccount(password: string) {
     return request<{ ok: true }>("/api/me/delete", { method: "POST", body: JSON.stringify({ password }) });
+  },
+  /** Venue directory: by name/town/postcode (q) or near a point. Our own data, no Google calls. */
+  searchVenues(opts: { q?: string; near?: LatLng | null; kind?: string; page?: number }) {
+    const params = new URLSearchParams();
+    if (opts.q) params.set("q", opts.q);
+    if (opts.near) params.set("near", `${opts.near.lat.toFixed(4)},${opts.near.lng.toFixed(4)}`);
+    if (opts.kind) params.set("kind", opts.kind);
+    if (opts.page) params.set("page", String(opts.page));
+    return request<VenueSearchResult>(`/api/venues?${params}`);
+  },
+  areaVenues(area: string, opts: { kind?: string; page?: number } = {}) {
+    const params = new URLSearchParams();
+    if (opts.kind) params.set("kind", opts.kind);
+    if (opts.page) params.set("page", String(opts.page));
+    return request<VenueSearchResult>(`/api/venues/area/${encodeURIComponent(area)}?${params}`);
+  },
+  getVenue(slug: string) {
+    return request<VenueDetails>(`/api/venues/${slug}`);
+  },
+  fsaAuthorities() {
+    return request<{ authorities: FsaAuthority[] }>("/api/admin/venues/authorities").then((r) => r.authorities);
+  },
+  importAuthority(authorityId: number) {
+    return request<{ name: string; fetched: number; added: number; updated: number; closed: number; total: number }>(
+      "/api/admin/venues/import",
+      { method: "POST", body: JSON.stringify({ authorityId }) },
+    );
   },
   community(opts: { sort?: "top" | "new"; country?: string; q?: string; page?: number; limit?: number } = {}) {
     const params = new URLSearchParams();
